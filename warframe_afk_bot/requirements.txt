@@ -1,0 +1,9 @@
+# Зависимости Warframe AFK Bot
+# pip install -r requirements.txt
+opencv-python-headless>=4.8   # компьютерное зрение (шаблоны, HSV-маски)
+numpy>=1.24                   # матричные операции
+mss>=9.0                      # быстрый захват экрана (DXGI на Windows)
+keyboard>=0.13                # глобальные хоткеи (F8/F9 работают поверх игры)
+PyAutoGUI>=0.9.54             # эмуляция мыши/клавиатуры
+Pillow>=10.0                  # изображения шаблонов
+PyYAML>=6.0                   # конфиг

@@ -1,0 +1,99 @@
+# ============================================================
+#  Warframe AFK Bot — основной конфиг
+#  Все значения можно менять без правки кода.
+# ============================================================
+
+game:
+  # Имя окна игры (Win32). На Linux/macOS оставь null — будет захват всего экрана
+  # (рекомендуется запускать игру в окне 1920x1080 без рамки).
+  window_title: "Warframe"
+  monitor: 1                 # номер монитора (1 = основной)
+  region: null               # например {left: 0, top: 0, width: 1920, height: 1080}
+
+capture:
+  fps: 12                    # частота анализа кадров
+  downscale: 1.0             # 0.5 = анализ в ~4 раза быстрее
+
+vision:
+  template_dir: templates    # папка со скриншотами-шаблонами (см. README)
+  default_threshold: 0.80    # порог совпадения шаблона (0..1)
+  multi_scale: true          # искать шаблон в нескольких масштабах
+  scales: [0.9, 0.95, 1.0, 1.05, 1.1]
+  hsv:                       # эталонные HSV-диапазоны (H:0-179 S:0-255 V:0-255)
+    enemy_marker:    {h_min: 75, h_max: 105, s_min: 150, v_min: 150}  # синий маркер над врагом
+    loot_marker:     {h_min: 10, h_max: 35,  s_min: 150, v_min: 150}  # оранжевый ромб лута
+    health_red:      {h_min: 0,  h_max: 8,   s_min: 120, v_min: 120}  # красная полоса HP
+    mod_reward_blue: {h_min: 95, h_max: 125, s_min: 80,  v_min: 80}   # синий фон карточки модов
+    credit_gold:     {h_min: 22, h_max: 40,  s_min: 120, v_min: 150}  # золотые кредиты
+
+input:
+  backend: auto              # auto / pyautogui / keyboard
+  mouse_move_time: 0.08      # плавность движения мыши (сек)
+  humanize: true             # случайные микро-паузы между действиями
+  jitter_ms: [40, 160]
+
+antiafk:
+  enabled: true
+  interval_sec: [45, 95]     # случайно каждые 45-95 сек
+  actions:                   # ротация безвредных «живых» действий
+    - {type: key, key: "shift", hold: 0.05}
+    - {type: key, key: "ctrl", hold: 0.05}
+    - {type: move_mouse_rel, dx: 3, dy: 2}
+    - {type: move_mouse_back}
+
+afk_zones:
+  # ---- AFK-ферма ЭФФОСОВ (Orokin Moon / Phobos, бесконечный спавн врагов) ----
+  effusion_farm:
+    enabled: true
+    aim: nearest_enemy_marker    # center | nearest_enemy_marker
+    fire_key: mouse_left
+    reload_key: r
+    reload_every_shots: 21
+    burst_enabled: false         # «залповый» режим: выглядит как живой игрок
+    burst_on_ms: 800
+    burst_off_ms: 2500
+    pickup_loot: true
+    check_interval_sec: 0.25
+
+  # ---- AFK-фарм ЛИТ (аномалия Lith Intact на Земле, окно раз в час) ----
+  lith_anomaly:
+    enabled: true
+    scan_templates: [anomaly_icon.png]
+    click_template: anomaly_icon.png
+    reward_templates: [mod_card.png, claim_button.png]
+    loop_delay_sec: 60
+
+  # ---- AFK-фарм НЕКРАЛОХ (Duviri «Loop» / Глубинный Шрам) ----
+  duviri_loop:
+    enabled: true
+    templates:
+      start_run: duviri_play.png
+      complete: objective_complete.png
+      extract: extraction_button.png
+      continue: continue_button.png
+      gear_choice: gear_choice_screen.png
+    poll_sec: 1.0
+
+  # ---- Универсальный повторяющийся макрос (запись: tools/hotkey_recorder.py) ----
+  repeat_macro:
+    enabled: false
+    macro_file: profiles/my_macro.json
+    loop_pause_sec: [2, 6]
+
+  # ---- Авто-ревард (кнопки после миссий: Продолжить/Забрать/OK) ----
+  auto_reward:
+    enabled: true
+    templates: [continue_button.png, claim_button.png, ok_button.png,
+                replay_button.png, exit_button.png, accept_button.png]
+    delay_first_sec: 3.0
+    max_clicks_per_screen: 12
+
+logging:
+  level: INFO
+  file: logs/bot.log
+  stats_file: logs/stats.json
+
+hotkeys:
+  toggle_bot: f8               # старт/стоп бота
+  panic_stop: f9               # мгновенная полная остановка
+  screenshot: print screen     # сохранить кадр в captures/ (для нарезки шаблонов)
