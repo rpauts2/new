@@ -17,6 +17,7 @@ from __future__ import annotations
 import random
 import time
 import logging
+from typing import Optional
 
 log = logging.getLogger("wf.input")
 
@@ -131,3 +132,52 @@ class InputController:
     def strafe(self, direction: str = "a", duration: float = 0.15):
         """Микро-стрейф — лёгкое движение персонажа (W/A/S/D)."""
         self.hold_key(direction, duration)
+
+    # ---------------- игровые действия (расширения v2) ----------------
+    def scroll(self, clicks: int = -1, x: Optional[int] = None, y: Optional[int] = None):
+        """Колесо мыши — смена оружия/слотов в Warframe. Отрицательное = вверх."""
+        if self._pg:
+            if x is not None and y is not None:
+                self._pg.scrollTo(clicks, x=x, y=y)
+            else:
+                self._pg.scroll(clicks)
+        self._pause()
+
+    def mouse_to_center(self, screen_size: Optional[tuple] = None):
+        """Вернуть «камеру» в центр (для доворота после лут-кликов)."""
+        if self._pg and screen_size:
+            w, h = screen_size
+            self._pg.moveTo(w // 2, h // 2, duration=self.move_time)
+
+    def sequence(self, events: list[dict], stop_check=None):
+        """Проиграть список событий [{'type','key'/'button','x','y','hold'}].
+
+        Используется профилями-плейлистами и макросами. stop_check — callable,
+        если вернёт True — исполнение прерывается.
+        """
+        for ev in events:
+            if stop_check and stop_check():
+                return False
+            t = ev.get("type")
+            if t == "press":
+                self.press_key(ev["key"], hold=float(ev.get("hold", 0.03)))
+            elif t == "down":
+                if self._pg:
+                    self._pg.keyDown(ev["key"])
+                elif self._kb:
+                    self._kb.press(ev["key"])
+            elif t == "up":
+                if self._pg:
+                    self._pg.keyUp(ev["key"])
+                elif self._kb:
+                    self._kb.release(ev["key"])
+            elif t == "click":
+                self.click_at(int(ev["x"]), int(ev["y"]),
+                              button=ev.get("button", "left"))
+            elif t == "move_rel":
+                self.move_rel(int(ev.get("dx", 0)), int(ev.get("dy", 0)))
+            elif t == "scroll":
+                self.scroll(int(ev.get("clicks", -1)))
+            elif t == "wait":
+                time.sleep(float(ev.get("sec", 0.5)))
+        return True

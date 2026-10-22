@@ -43,10 +43,47 @@ class EffusionFarm(FarmModule):
         self.burst_on = int(cfg.get("burst_on_ms", 800)) / 1000
         self.burst_off = int(cfg.get("burst_off_ms", 2500)) / 1000
         self.pickup_loot = bool(cfg.get("pickup_loot", True))
+        # --- v2: safety — следим за HP и умеем возрождаться ---
+        self.health_watch = bool(cfg.get("health_watch", True))
+        self.hp_roi = tuple(cfg.get("hp_bar_roi", [30, 940, 400, 25]))  # x,y,w,h в координатах кадра
+        self.hp_min_ratio = float(cfg.get("hp_min_ratio", 0.18))
+        self.revive_enabled = bool(cfg.get("revive_enabled", True))
+        self.revive_key = cfg.get("revive_key", "x")   # стандартная клавиша revive в Warframe
+        self._dead_since = 0.0
+        self._low_hp_since = 0.0
         self._shots_in_mag = 0
         self._fire_started = 0.0
 
     # ------------------------------------------------------------------
+    def _safety_tick(self, frame) -> bool:
+        """True — нужно пропустить обычный цикл (низкое HP / смерть)."""
+        if not self.health_watch:
+            return False
+        try:
+            ratio = self.bot.vision.health_bar_ratio(frame, self.hp_roi)
+        except Exception:
+            return False
+        if ratio < self.hp_min_ratio:
+            if self._low_hp_since == 0:
+                self._low_hp_since = time.time()
+            # при критическом HP перестаём стрелять и отходим назад (S)
+            if time.time() - self._low_hp_since > 1.0:
+                self.log.warning("HP критично (%.0f%%) — отход/ревайв", ratio * 100)
+                if self.revive_enabled and ratio < 0.03:
+                    self.bot.input.press_key(self.revive_key)
+                    self.bot.stats["revives"] = self.bot.stats.get("revives", 0) + 1
+                    self._dead_since = time.time()
+                self.bot.input.strafe("s", duration=0.6)
+                self._low_hp_since = 0
+                return True
+        else:
+            self._low_hp_since = 0
+        # после ревайва даём время на загрузку/возрождение
+        if self._dead_since and time.time() - self._dead_since < 20:
+            return True
+        self._dead_since = 0
+        return False
+
     def _find_enemy(self, frame):
         """Ближайший к перекрестию синий маркер врага."""
         h, w = frame.shape[:2]
@@ -78,6 +115,9 @@ class EffusionFarm(FarmModule):
 
     # ------------------------------------------------------------------
     def on_tick(self, frame):
+        # 0. Безопасность: HP / смерть — приоритет всего остального
+        if self._safety_tick(frame):
+            return
         # 1. Лут всегда приоритетнее стрельбы (пока горит маркер — подобрать)
         if self.pickup_loot:
             loot = self._find_loot(frame)

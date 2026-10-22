@@ -186,6 +186,53 @@ class VisionEngine:
         return dets
 
     # ------------------------- Эвристики UI -------------------------
+    def detect_screen(self, frame: np.ndarray) -> str:
+        """Классификатор состояния игры по одному кадру (для profile-движка).
+
+        Порядок: сначала специфичные шаблоны, потом «ловушки», затем HSV-евристики.
+        Возвращает один из тегов:
+          mission | reward_card | extraction | navigation | loading | menu | unknown
+        """
+        h, w = frame.shape[:2]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame
+
+        # 1. Шаблоны-«якоря» экранов (если нарезаны пользователем)
+        for tpl_name, tag in (("extraction_button.png", "extraction"),
+                              ("mission_hud.png", "mission"),
+                              ("navigation_map.png", "navigation")):
+            if tpl_name in self.templates:
+                if self.match_template(frame, tpl_name, threshold=self.threshold,
+                                       max_results=1):
+                    return tag
+
+        # 2. Экран наград: крупные цветные карточки в центре
+        try:
+            card = self.pick_reward_card(frame)
+            if card is not None:
+                return "reward_card"
+        except KeyError:
+            pass
+
+        # 3. Loading/заставка: почти монохромный тёмный кадр без краёв? — нет,
+        #    надёжнее: Warframe loading = чёрный фон + тонкая полоса прогресса.
+        mean_val = float(np.mean(gray))
+        edge_density = float(np.count_nonzero(cv2.Canny(gray, 50, 150))) / (h * w)
+        if mean_val < 25 and edge_density < 0.004:
+            return "loading"
+
+        # 4. В бою есть HUD: перекрестие+маркеры → много ярких пикселей в центре;
+        #   simple heuristic: синий вражеский маркер или оранжевый лут = миссия
+        for key in ("enemy_marker", "loot_marker"):
+            if key in self.hsv_ranges:
+                m = self.hsv_mask(frame, key)
+                if np.count_nonzero(m) > (h * w * 0.0003):
+                    return "mission"
+
+        # 5. Меню/орбитер: светлый «стерильный» интерфейс с кучей прямых линий
+        if mean_val > 60 and edge_density > 0.02:
+            return "menu"
+        return "unknown"
+
     def pick_reward_card(self, frame: np.ndarray) -> Optional[Detection]:
         """Экран наград: карточка с СИНЕЙ рамкой — мод, с ЗОЛОТОЙ — кредиты.
         Возвращает центр самой «синей» карточки (вариант «дешёвого» реварда)."""

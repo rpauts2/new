@@ -40,8 +40,11 @@ MODULE_REGISTRY = {
     "effusion_farm": ("modules.effusion_farm", "EffusionFarm"),
     "lith_anomaly":  ("modules.lith_anomaly",  "LithAnomalyFarm"),
     "duviri_loop":   ("modules.duviri_loop",   "DuviriLoopFarm"),
+    "nightwave_farm": ("modules.nightwave_farm", "NightwaveFarm"),
+    "focus_fire":    ("modules.focus_fire",    "FocusFire"),
     "auto_reward":   ("modules.auto_reward",   "AutoRewardClicker"),
     "repeat_macro":  ("modules.repeat_macro",  "RepeatMacro"),
+    "profile_runner": ("modules.profile_runner", "ProfileRunner"),
     "antiafk":       ("modules.antiafk",       "AntiAFKKeeper"),
 }
 
@@ -159,7 +162,15 @@ class WarframeAFKBot:
                 if self.running:
                     frame = self.capture.grab()
                     self.last_frame = frame
+                    # эксклюзивный профиль глушит боевые модули, пока у руля
+                    profile_mod = next((m for m in self.modules
+                                        if m.name == "profile_runner"), None)
+                    suppress = set()
+                    if profile_mod is not None and getattr(profile_mod, "active", False):
+                        suppress = set(profile_mod.pause_others())
                     for m in self.modules:
+                        if m.name in suppress:
+                            continue
                         try:
                             m.tick(frame)
                         except Exception as e:
