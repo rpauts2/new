@@ -7,14 +7,20 @@ from __future__ import annotations
 
 import time
 import logging
-from enum import Enum, auto
+
+
+class _StateVal:
+    """Простое значение состояния с именем (для логов)."""
+    __slots__ = ("name",)
+    def __init__(self, name): self.name = name
+    def __repr__(self): return self.name
 
 
 class FarmModule:
     """Общий каркас: throttle по tick_interval + машина состояний."""
 
-    class State(Enum):
-        IDLE = auto()
+    class State:
+        IDLE = _StateVal("IDLE")
 
     def __init__(self, bot, cfg: dict, name: str):
         self.bot = bot                 # доступ к capture/vision/input/stats

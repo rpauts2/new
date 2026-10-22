@@ -158,6 +158,10 @@ class VisionEngine:
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         lo = np.array([rng["h_min"], rng.get("s_min", 0), rng.get("v_min", 0)], np.uint8)
         hi = np.array([rng["h_max"], rng.get("s_max", 255), rng.get("v_max", 255)], np.uint8)
+        if rng["h_min"] > rng["h_max"]:   # wrap через 0 (красный/мадурай)
+            m1 = cv2.inRange(hsv, lo, np.array([179, hi[1], hi[2]], np.uint8))
+            m2 = cv2.inRange(hsv, np.array([0, lo[1], lo[2]], np.uint8), hi)
+            return cv2.bitwise_or(m1, m2)
         return cv2.inRange(hsv, lo, hi)
 
     def find_color_blobs(self, frame: np.ndarray, color_key: str,

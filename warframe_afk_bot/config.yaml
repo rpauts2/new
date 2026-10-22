@@ -25,6 +25,8 @@ vision:
     health_red:      {h_min: 0,  h_max: 8,   s_min: 120, v_min: 120}  # красная полоса HP
     mod_reward_blue: {h_min: 95, h_max: 125, s_min: 80,  v_min: 80}   # синий фон карточки модов
     credit_gold:     {h_min: 22, h_max: 40,  s_min: 120, v_min: 150}  # золотые кредиты
+  hud_hp_roi: [0.02, 0.90, 0.20, 0.05]   # зона полосы HP в HUD (доли экрана x,y,w,h)
+                                          # откалибруй скриншотом, если паника не срабатывает
 
 input:
   backend: auto              # auto / pyautogui / keyboard
@@ -73,6 +75,36 @@ afk_zones:
       continue: continue_button.png
       gear_choice: gear_choice_screen.png
     poll_sec: 1.0
+
+  # ---- АВТОПИЛОТ СПОСОБНОСТЕЙ: кастует Q/E/R/F по базе фреймов ----
+  # Список фреймов и их ротаций: python tools/frames_info.py --list
+  ability_autopilot:
+    enabled: true
+    frame: "revenant"            # твой основной фарм-фрейм
+    auto_cast: true
+    combat_only: true            # кастовать только при видимых врагах
+    hp_panic_pct: 30             # HP ниже 30% -> режим выживания
+    cooldown_jitter_pct: 15      # рандомизация таймеров (анти-паттерн)
+    fire_during_rotate: false    # sec удержания ЛКМ между кастами (0/false = нет)
+    check_interval_sec: 0.5
+    extra_abilities: {}          # переопределения: {"2": {cooldown: 18}}
+
+  # ---- НЕКРАЛОХ / Duviri Pinn + Contagion активности ----
+  necralisk_farm:
+    enabled: false               # включай когда идёшь на Глубинный Шрам
+    mode: "pinn"                 # pinn | contagion
+    interact_key: "f"
+    min_loot_blobs: 2
+    stay_center: true
+    poll_sec: 1.0
+
+  # ---- ФОКУС v2: лампы школ (madurai/zenist/unairu/vazarin/naramon) ----
+  focus_fire_v2:
+    enabled: false
+    priority_school: "madurai"
+    interact_key: "f"
+    min_area: 60
+    check_interval_sec: 0.4
 
   # ---- Универсальный повторяющийся макрос (запись: tools/hotkey_recorder.py) ----
   repeat_macro:

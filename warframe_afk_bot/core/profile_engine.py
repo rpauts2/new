@@ -240,6 +240,25 @@ class ProfileEngine:
                 inp.fire_held(float(p.get("sec", 1.0)),
                               button=p.get("button", "left"))
                 self._stat_add("shots_fired", int(p.get("sec", 1.0) * 9))
+            elif kind == "cast":
+                # автокаст способности по слоту из базы фреймов:
+                #   cast: {frame: revenant, slot: "2"}  или просто cast: "2"
+                from data.frames_db import get_frame
+                p2 = self._resolve(params) if isinstance(params, dict) \
+                    else {"slot": params}
+                fname = str(p2.get("frame", self.cfg.get("frame", ""))).lower()
+                slot = str(p2.get("slot", "1"))
+                fr = get_frame(fname or "_")
+                ab = fr["abilities"].get(slot)
+                if ab:
+                    key = ab.get("hotkey", "q")
+                    if ab.get("cast") == "hold":
+                        inp.hold_key(key, float(ab.get("hold_sec", 2.0)))
+                    else:
+                        inp.press_key(key)
+                    self._stat_add("ability_casts", 1)
+                else:
+                    self.log.warning("cast: слот %s не найден для '%s'", slot, fname)
             elif kind == "reload":
                 if params:
                     inp.press_key(self.bot.cfg.get("afk_zones", {})
