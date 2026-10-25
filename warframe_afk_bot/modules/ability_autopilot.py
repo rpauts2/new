@@ -62,6 +62,10 @@ class AbilityAutopilot(FarmModule):
         self.energy_min = float(cfg.get("energy_min_pct", 25))
         self.hp_panic = float(cfg.get("hp_panic_pct", 30))
         self.jitter = float(cfg.get("cooldown_jitter_pct", 15)) / 100.0
+        # PixelCheck-триггеры иконок способностей (идея Yagami Cyte-09.ahk):
+        # slot -> {roi: [x,y,w,h] доли экрана, hex: "rrggbb", tol: int}
+        self.hud_triggers = (self.bot.cfg.get("vision", {})
+                             .get("hud_ability_triggers") or {})
 
         # таймеры готовности: slot -> unix-time когда можно кастовать
         self.ready_at: dict[str, float] = {slot: 0.0
@@ -71,8 +75,23 @@ class AbilityAutopilot(FarmModule):
         self._casts_total = 0
 
     # ------------------------------------------------------------------
-    def _can_cast(self, slot: str) -> bool:
-        return time.time() >= self.ready_at.get(slot, 0.0)
+    def _can_cast(self, slot: str, frame=None) -> bool:
+        if time.time() < self.ready_at.get(slot, 0.0):
+            return False
+        # PixelCheck-триггер HUD (Cyte-09 style): если иконка настроена и
+        # НЕ горит цветом готовности — способность реально не готова,
+        # сдвигаем таймер, чтобы не долбить бесполезными кастами.
+        trig = self.hud_triggers.get(str(slot))
+        if trig and frame is not None:
+            try:
+                ready = self.bot.vision.color_in_roi(
+                    frame, trig["roi"], trig["hex"], int(trig.get("tol", 30)))
+            except Exception:
+                ready = True
+            if not ready:
+                self.ready_at[slot] = time.time() + 2.0
+                return False
+        return True
 
     def _mark_cast(self, slot: str):
         ab = self.frame["abilities"].get(slot) or {}
@@ -85,7 +104,7 @@ class AbilityAutopilot(FarmModule):
 
     def _cast(self, slot: str, frame) -> bool:
         ab = self.frame["abilities"].get(slot)
-        if not ab or not self._can_cast(slot):
+        if not ab or not self._can_cast(slot, frame):
             return False
         key = ab.get("hotkey", "q")
         if ab.get("cast") == "hold":
@@ -167,7 +186,7 @@ class AbilityAutopilot(FarmModule):
             else:
                 # поддержка sustain-ротации по кулдаунам
                 for slot in self._slots_sorted(self.frame.get("sustain", [])):
-                    if self._can_cast(slot):
+                    if self._can_cast(slot, frame):
                         self._cast(slot, frame)
                         break
             # добиваем выстрелами, если профиль это не делает

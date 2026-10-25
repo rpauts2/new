@@ -366,6 +366,99 @@ FRAMES_DB = {
         "afk_fit": ("good", "Echo Lace — пассивноподобный AoE по кулдауну"),
     },
 
+    # ============ Арбитраж-ротации (по AHK-профилям wf-yagami/Arbitrations) ============
+    "saryn": {
+        "role": "dps",
+        "abilities": {
+            "1": {"name": "Spores", "hotkey": "q", "cooldown": 85,
+                  "cast": "hold", "hold_sec": 0.25, "priority": 1,
+                  "notes": "DoT-стаки на всю волну; в арбитраже держат бафф ~85 сек"},
+            "2": {"name": "Toxic Lash (Muta)", "hotkey": "e", "cooldown": 95,
+                  "cast": "press", "priority": 2},
+            "3": {"name": "Molt", "hotkey": "r", "cooldown": 60,
+                  "cast": "press", "priority": 99},
+            "4": {"name": "Transpoles", "hotkey": "f", "cooldown": 75,
+                  "cast": "press", "priority": 99},
+        },
+        "combo": ["1"],
+        "sustain": ["1", "2"],
+        "afk_fit": ("good", "Saryn DoT стаки — классика авто-арбитража"),
+    },
+
+    "mirage": {
+        "role": "support",
+        "abilities": {
+            "1": {"name": "Hall of Mirrors", "hotkey": "q", "cooldown": 20,
+                  "cast": "press", "priority": 3,
+                  "notes": "доп. урон команды, можно спамить"},
+            "2": {"name": "Prism", "hotkey": "e", "cooldown": 30,
+                  "cast": "press", "priority": 99},
+            "3": {"name": "Eclipse", "hotkey": "r", "cooldown": 53,
+                  "cast": "press", "priority": 1,
+                  "notes": "бафф урона+защиты ~53 сек — ядро автобафа"},
+            "4": {"name": "Curtain Call", "hotkey": "f", "cooldown": 45,
+                  "cast": "press", "priority": 99},
+        },
+        "combo": ["3"],
+        "sustain": ["3", "1"],
+        "afk_fit": ("good", "Eclipse — долгий бафф, идеален для автоподдержки"),
+    },
+
+    "wisp": {
+        "role": "support",
+        "abilities": {
+            "1": {"name": "Will-o-Whisp", "hotkey": "q", "cooldown": 25,
+                  "cast": "press", "priority": 1,
+                  "notes": "+скорость перезарядки команде — автобаф"},
+            "2": {"name": "Reservoir", "hotkey": "e", "cooldown": 30,
+                  "cast": "press", "priority": 2},
+            "3": {"name": "Lullaby", "hotkey": "r", "cooldown": 35,
+                  "cast": "press", "priority": 3},
+            "4": {"name": "Breach Surge", "hotkey": "f", "cooldown": 45,
+                  "cast": "press", "priority": 99},
+        },
+        "combo": ["1", "2"],
+        "sustain": ["1"],
+        "afk_fit": ("good", "Wisp-бафы раздаются одной кнопкой в начале миссии"),
+    },
+
+    "nidus": {
+        "role": "tank",
+        "abilities": {
+            "1": {"name": "Viral Spread", "hotkey": "q", "cooldown": 20,
+                  "cast": "press", "priority": 1},
+            "2": {"name": "Radiant Strain", "hotkey": "e", "cooldown": 30,
+                  "cast": "press", "priority": 2,
+                  "notes": "грибы-баффы; раскладка камеры подбирается вручную"},
+            "3": {"name": "Packleader", "hotkey": "r", "cooldown": 40,
+                  "cast": "press", "priority": 3},
+            "4": {"name": "Larva", "hotkey": "f", "cooldown": 60,
+                  "cast": "press", "priority": 99},
+        },
+        "combo": ["1", "2"],
+        "sustain": ["1"],
+        "afk_fit": ("medium", "Нужно размещать грибы — полный AFK только с автострельбой"),
+    },
+
+    "hildryn": {
+        "role": "tank",
+        "abilities": {
+            "1": {"name": "Shield Wall", "hotkey": "q", "cooldown": 20,
+                  "cast": "press", "priority": 1,
+                  "notes": "щит -> энергия; ключ выживания"},
+            "2": {"name": "Pacifying Flame", "hotkey": "e", "cooldown": 12,
+                  "cast": "press", "priority": 2,
+                  "notes": "спам под удержанием ЛКМ (AHK hildryn.ahk)"},
+            "3": {"name": "Spirit Shield", "hotkey": "r", "cooldown": 25,
+                  "cast": "press", "priority": 3},
+            "4": {"name": "Provoked Wrath", "hotkey": "f", "cooldown": 40,
+                  "cast": "press", "priority": 99},
+        },
+        "combo": ["1"],
+        "sustain": ["2", "1"],
+        "afk_fit": ("excellent", "Потребляет щит вместо энергии — вечная аура Pacifist"),
+    },
+
     "trinity": {
         "role": "support",
         "abilities": {

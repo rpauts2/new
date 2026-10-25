@@ -27,6 +27,10 @@ vision:
     credit_gold:     {h_min: 22, h_max: 40,  s_min: 120, v_min: 150}  # золотые кредиты
   hud_hp_roi: [0.02, 0.90, 0.20, 0.05]   # зона полосы HP в HUD (доли экрана x,y,w,h)
                                           # откалибруй скриншотом, если паника не срабатывает
+  hud_energy_roi: [0.24, 0.90, 0.20, 0.05]  # зона полосы энергии (для автопилота)
+  # PixelCheck-зоны как у Yagami Cyte-09.ahk: готовность способности по цвету иконки.
+  # roi в долях экрана; hex — цвет ГОТОВОЙ иконки; tolerance — отклонение 0..255.
+  hud_ability_triggers: {}               # пример: {"1": {roi: [0.86,0.925,0.012,0.014], hex: "5ad205", tol: 10}}
 
 input:
   backend: auto              # auto / pyautogui / keyboard
@@ -119,6 +123,54 @@ afk_zones:
                 replay_button.png, exit_button.png, accept_button.png]
     delay_first_sec: 3.0
     max_clicks_per_screen: 12
+
+  # ---- ZOO-МЕТАТЕЛЬ: Profit-Taker Orb / Окукор / Bo / Glaive ----
+  # (перенос wf-macro zaw_throw.ahk + pt.ahk, Yagami Glaive.ahk)
+  zaw_throw:
+    enabled: false               # включай на PT-орбе или в Эффосах с Окукором
+    mode: profit_taker           # profit_taker | okukor | bo | glaive
+    fire_key: mouse_left
+    aim_key: "["
+    melee_key: e
+    jump_key: space
+    throw_every_sec: [6, 12]
+    shoot_hold_sec: 0.55
+    humanize_pct: 15
+
+  # ---- NORA SKIP: мгновенный выход из катсцен/рестарт лупа (wf-macro nora_skip) ----
+  nora_skip:
+    enabled: true
+    trigger_hotkey: f6
+    auto_on_cutscene: false      # авто по чёрным полосам (осторожно: может скипать сюжетку!)
+    exit_pos_rel: [0.74, 0.55]
+    exit_template: null          # например exit_button.png — надёжнее координат
+
+  # ---- AFK-АНОМАЛИИ: Nova loop / Mag vacuum corner (nova_farm.ahk, Nekros solo farm) ----
+  afk_anomaly:
+    enabled: false
+    tactic: mag_vacuum           # nova_loop | mag_vacuum
+    vacuum_slot: "4"             # слот Притяжения (Mag/Nova Mutalist = 4)
+    interval_ms: [90, 160]       # live-тюнинг: Alt+Up/Down
+    loop_pause_sec: [45, 55]     # для nova_loop (кулдаун Null Star)
+    enter_key: f
+
+  # ---- TRIGGERBOT: реакция по пиксель-триггеру прицела (Cyte-09 style) ----
+  # ВНИМАНИЕ: держи консервативно, это пограничная автоматизация!
+  triggerbot:
+    enabled: false
+    crosshair_roi_rel: [0.495, 0.49, 0.01, 0.02]
+    target_hex: "ff3b30"         # обязательно подбери через tools/calibrate.py
+    tolerance: 40
+    fire_key: mouse_left
+    min_interval_ms: [180, 420]
+    require_loot_or_enemy: enemy_marker
+
+  # ---- OVERLAY: мини-HUD поверх игры (аналог LazyHub UI) ----
+  overlay:
+    enabled: true
+    pos_rel: [0.006, 0.45]
+    refresh_sec: 1.0
+    show_warnings: true
 
 logging:
   level: INFO

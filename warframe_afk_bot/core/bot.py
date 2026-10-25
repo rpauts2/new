@@ -49,6 +49,24 @@ MODULE_REGISTRY = {
     "repeat_macro":  ("modules.repeat_macro",  "RepeatMacro"),
     "profile_runner": ("modules.profile_runner", "ProfileRunner"),
     "antiafk":       ("modules.antiafk",       "AntiAFKKeeper"),
+    # ---- v3: перенос лучших идей из AHK-скриптов (Lazy-World, YagamiKlait) ----
+    "zaw_throw":     ("modules.zaw_farm",      "ZawThrowFarm"),
+    "nora_skip":     ("modules.nora_skip",     "NoraSkip"),
+    "afk_anomaly":   ("modules.afk_anomaly",   "AfkAnomalyFarm"),
+    "triggerbot":    ("modules.triggerbot",    "TriggerBot"),
+    "overlay":       ("modules.overlay",       "OverlayHUD"),
+}
+
+# Порядок исполнения модулей в одном кадре (меньший — раньше).
+# По умолчанию 50; overlay всегда последний.
+MODULE_PRIORITY = {
+    "auto_reward": 10,
+    "nora_skip": 20,
+    "zaw_throw": 30,
+    "ability_autopilot": 40,
+    "effusion_farm": 45,
+    "triggerbot": 48,
+    "overlay": 999,
 }
 
 
@@ -144,6 +162,11 @@ class WarframeAFKBot:
         """Свежий кадр для модулей (один захват на цикл планировщика)."""
         return self.capture.grab()
 
+    def sorted_modules(self):
+        """Модули в порядке приоритета исполнения (MODULE_PRIORITY)."""
+        return sorted(self.modules,
+                      key=lambda m: MODULE_PRIORITY.get(m.name, 50))
+
     def save_stats(self):
         lg = self.cfg.get("logging", {})
         path = lg.get("stats_file", "logs/stats.json")
@@ -171,7 +194,7 @@ class WarframeAFKBot:
                     suppress = set()
                     if profile_mod is not None and getattr(profile_mod, "active", False):
                         suppress = set(profile_mod.pause_others())
-                    for m in self.modules:
+                    for m in self.sorted_modules():
                         if m.name in suppress:
                             continue
                         try:

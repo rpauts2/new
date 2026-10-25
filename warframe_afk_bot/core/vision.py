@@ -189,6 +189,40 @@ class VisionEngine:
         dets.sort(key=lambda d: (d.cx - center[0]) ** 2 + (d.cy - center[1]) ** 2)
         return dets
 
+    # ---------------- цветовой пиксельный триггер (AHK PixelCheck) ----------------
+    def color_in_roi(self, frame: np.ndarray, roi_rel, hex_color: str,
+                     tolerance: int = 30) -> bool:
+        """Есть ли в зоне кадра пиксели заданного цвета (BGR ±tolerance).
+
+        roi_rel — [x, y, w, h] в ДОЛЯХ экрана (как hud_hp_roi), либо None = весь кадр.
+        Аналог триггеров Cyte-09.ahk: готовность способности по цвету иконки в HUD.
+        """
+        h, w = frame.shape[:2]
+        if roi_rel is not None:
+            x = int(roi_rel[0] * w); y = int(roi_rel[1] * h)
+            rw = max(int(roi_rel[2] * w), 1); rh = max(int(roi_rel[3] * h), 1)
+            sub = frame[y:y + rh, x:x + rw]
+        else:
+            sub = frame
+        if sub.size == 0:
+            return False
+        hc = hex_color.lstrip("#")
+        r, g, b = (int(hc[i:i + 2], 16) for i in (0, 2, 4))
+        target = np.array([b, g, r], np.int16)          # BGR
+        diff = np.abs(sub.astype(np.int16) - target).max(axis=2)
+        return bool((diff <= tolerance).any())
+
+    def bar_ratio(self, frame: np.ndarray, roi_rel, color_key: str) -> float:
+        """Доля пикселей цвета color_key в прямоугольнике HUD (0..1)."""
+        h, w = frame.shape[:2]
+        x = int(roi_rel[0] * w); y = int(roi_rel[1] * h)
+        rw = max(int(roi_rel[2] * w), 1); rh = max(int(roi_rel[3] * h), 1)
+        sub = frame[y:y + rh, x:x + rw]
+        if sub.size == 0:
+            return 0.0
+        mask = self.hsv_mask(sub, color_key)
+        return float(np.count_nonzero(mask)) / float(mask.size)
+
     # ------------------------- Эвристики UI -------------------------
     def detect_screen(self, frame: np.ndarray) -> str:
         """Классификатор состояния игры по одному кадру (для profile-движка).

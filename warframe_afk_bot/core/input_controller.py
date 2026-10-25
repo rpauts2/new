@@ -58,7 +58,38 @@ class InputController:
             time.sleep(base)
 
     # ---------------- клавиатура ----------------
+    @staticmethod
+    def _normalize_key(key: str) -> str:
+        """Приводим игровые имена клавиш к формату pyautogui/keyboard.
+
+        'vk01' (ЛКМ как в AHK-скриптах), 'XButton2', 'mouse_left', 'м' и т.п.
+        """
+        k = str(key).strip().lower()
+        aliases = {
+            "xbutton1": "left", "xbutton2": "right",
+            "mouse_left": "left", "mouse_right": "right",
+            "mouse_middle": "middle", "rmb": "right", "lmb": "left",
+            "vk01": "left", "vk02": "right", "vk04": "middle",   # AHK vk-коды мыши
+            "enter": "return", "escape": "esc", "del": "delete",
+            "pgdn": "pagedown", "pgup": "pageup", "scrolllock": "scroll lock",
+        }
+        return aliases.get(k, k)
+
+    def is_mouse_button(self, key: str) -> bool:
+        return self._normalize_key(key) in ("left", "right", "middle")
+
     def press_key(self, key: str, hold: float = 0.03):
+        key = self._normalize_key(key)
+        if self._pg and key in ("left", "right", "middle"):
+            # клавиша на самом деле кнопка мыши (например fire_key: mouse_left)
+            if hold > 0.01:
+                self._pg.mouseDown(button=key)
+                time.sleep(hold)
+                self._pg.mouseUp(button=key)
+            else:
+                self._pg.click(button=key)
+            self._pause(0.0)
+            return
         if self._pg:
             if hold > 0.01:
                 self._pg.keyDown(key)
@@ -71,7 +102,13 @@ class InputController:
         self._pause(0.0)
 
     def hold_key(self, key: str, seconds: float):
-        """Зажать клавишу на N секунд (спринт, приседание и т.п.)."""
+        """Зажать клавишу/кнопку мыши на N секунд (спринт, приседание и т.п.)."""
+        key = self._normalize_key(key)
+        if self._pg and key in ("left", "right", "middle"):
+            self._pg.mouseDown(button=key)
+            time.sleep(seconds)
+            self._pg.mouseUp(button=key)
+            return
         if self._pg:
             self._pg.keyDown(key)
         elif self._kb:
@@ -81,6 +118,13 @@ class InputController:
             self._pg.keyUp(key)
         elif self._kb:
             self._kb.release(key)
+
+    def tap_hold_cycle(self, key: str, hold_sec: float = 0.5,
+                       tap_sec: float = 0.5, cycles: int = 1):
+        """AHK-style HoldKey+SendKey чередование (тепловое сканирование Ember и т.п.)."""
+        for _ in range(int(cycles)):
+            self.hold_key(key, hold_sec)
+            self.press_key(key, hold=tap_sec)
 
     def combo(self, *keys: str):
         if self._pg:
