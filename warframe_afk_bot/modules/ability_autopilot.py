@@ -197,11 +197,14 @@ class AbilityAutopilot(FarmModule):
                 self.bot.input.fire_held(float(fire_cfg))
 
         elif st == self.State.PANIC_SURVIVE:
-            # сначала — способности выживания (минимальный priority среди
-            # танкующих: snow globe/rhino skin/trinity welc...)
-            surv = [s for s, ab in self.frame["abilities"].items()
-                    if any(k in str(ab.get("notes", "")).lower()
-                           for k in ("неуязв", "щит", "лечен", "стака", "вампир"))]
+            # сначала — способности выживания: явный список frame["survival"]
+            # (valkyr Scourge, rhino Iron Skin...), иначе эвристика по notes.
+            surv = list(self.frame.get("survival") or [])
+            surv += [s for s, ab in self.frame["abilities"].items()
+                     if s not in surv and any(
+                         k in (str(ab.get("notes", "")) + " " + str(ab.get("name", ""))).lower()
+                         for k in ("неуязв", "щит", "лечен", "стака", "вампир",
+                                   "scourge", "iron skin", "block"))]
             casted = False
             for slot in self._slots_sorted(surv or list(self.frame["abilities"])):
                 if self._cast(slot, frame):

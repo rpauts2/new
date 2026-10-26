@@ -148,11 +148,36 @@ afk_zones:
   # ---- AFK-АНОМАЛИИ: Nova loop / Mag vacuum corner (nova_farm.ahk, Nekros solo farm) ----
   afk_anomaly:
     enabled: false
-    tactic: mag_vacuum           # nova_loop | mag_vacuum
+    tactic: mag_vacuum           # nova_loop | mag_vacuum | mutalist_pull
     vacuum_slot: "4"             # слот Притяжения (Mag/Nova Mutalist = 4)
     interval_ms: [90, 160]       # live-тюнинг: Alt+Up/Down
     loop_pause_sec: [45, 55]     # для nova_loop (кулдаун Null Star)
     enter_key: f
+
+  # ---- ВЫЖИВАНИЕ (Survival/Endless): автощиты + sustain + сбор лута ----
+  # (по мотивам rpauts2 _survival-bot.ahk и Yagami corner-tank)
+  endurance_survival:
+    enabled: false               # включай только внутри миссии Survival
+    frame: "valkyr"              # фрейм из базы: valkyr/rhino/nekros/chroma...
+    hp_panic_pct: 40
+    heal_cast_cooldown_sec: 20
+    loot_pickup: true
+    interact_key: "f"
+    wander_every_sec: [60, 120]
+    max_wave_time_sec: 1800      # авто-выход через 30 мин (0 = никогда)
+    exit_keys: ["esc", "enter"]
+
+  # ---- АРБИТРАЖ: танк-ротация щитов + притягивалки + mesmer-режим ----
+  arbitration_farm:
+    enabled: false
+    frame: "valkyr"              # tank-режим; для mesmer: revenant / revenant-mutalist
+    mode: tank                   # tank | mesmer
+    min_enemies: 3
+    pull_slots: ["2", "3"]       # Sonic Nexus (banshee 2), Pull (mag 3), Null Pull (nova-mutalist 2)
+    hp_panic_pct: 45
+    death_pct: 18                # ниже — аварийный выход Esc->Enter
+    fire_during_hold: false
+    check_interval_sec: 0.6
 
   # ---- TRIGGERBOT: реакция по пиксель-триггеру прицела (Cyte-09 style) ----
   # ВНИМАНИЕ: держи консервативно, это пограничная автоматизация!

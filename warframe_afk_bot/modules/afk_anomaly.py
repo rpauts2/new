@@ -78,9 +78,13 @@ class AfkAnomalyFarm(FarmModule):
             self.log.debug("Live-тюнинг недоступен: %s", e)
 
     def _ability_key(self, slot: str) -> str:
-        from data.frames_db import ABILITY_KEYS
+        from data.frames_db import ABILITY_KEYS, get_frame
         over = (self.cfg.get("cast_keys") or {}).get(slot)
-        return over or ABILITY_KEYS.get(slot, "q")
+        if over:
+            return over
+        fr = get_frame(self.cfg.get("frame", "")) if self.cfg.get("frame") else None
+        hk = (fr or {}).get("abilities", {}).get(slot, {}).get("hotkey")
+        return hk or ABILITY_KEYS.get(slot, "q")
 
     # ------------------------------------------------------------------
     def on_tick(self, frame):
@@ -96,12 +100,28 @@ class AfkAnomalyFarm(FarmModule):
         except KeyError:
             pass
 
-        if self.tactic == "mag_vacuum":
+        if self.tactic in ("mag_vacuum", "mutalist_pull"):
+            # mutalist_pull = то же, но по базе фрейма: Nova Mutalist Null Pull = слот 2 (E),
+            # Mag Pull = слот 3 (R). Слот берём из vacuum_slot конфига или из frames_db.
             if now < self._next_cast:
                 return
             if not enemies and (now - self._last_enemy_seen) > 8:
                 return
-            key = self._ability_key(self.vacuum_slot)
+            if self.tactic == "mutalist_pull":
+                from data.frames_db import get_frame
+                fr = get_frame(self.cfg.get("frame", "nova-mutalist"))
+                pull = [s for s, ab in fr["abilities"].items()
+                        if any(k in (str(ab.get("name",""))+" "+str(ab.get("notes",""))).lower()
+                               for k in ("null pull", "притягива", "стягив",
+                                         "defection", "sonic nexus", "vacuum"))]
+                if not pull:   # мягкий fallback: любое «Pull» в названии
+                    pull = [s for s, ab in fr["abilities"].items()
+                            if str(ab.get("name","")).lower().startswith("pull")]
+                pull.sort(key=lambda s: int(s) if s.isdigit() else 9)
+                slot = pull[0] if pull else self.vacuum_slot
+            else:
+                slot = self.vacuum_slot
+            key = self._ability_key(slot)
             inp.press_key(key)
             self.bot.stats.setdefault("vacuum_casts", 0)
             self.bot.stats["vacuum_casts"] += 1

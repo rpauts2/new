@@ -53,8 +53,11 @@ MODULE_REGISTRY = {
     "zaw_throw":     ("modules.zaw_farm",      "ZawThrowFarm"),
     "nora_skip":     ("modules.nora_skip",     "NoraSkip"),
     "afk_anomaly":   ("modules.afk_anomaly",   "AfkAnomalyFarm"),
-    "triggerbot":    ("modules.triggerbot",    "TriggerBot"),
-    "overlay":       ("modules.overlay",       "OverlayHUD"),
+    "triggerbot":    (["modules.triggerbot", "modules.trigger_bot"], "TriggerBot"),
+    "overlay":       (["modules.overlay", "modules.hud_overlay"], "OverlayHUD"),
+    # ---- v4: эндлесс-выживание и Арбитраж (rpauts2 survival-bot, Yagami corner-tank) ----
+    "endurance_survival": (["modules.endurance_survival"], "EnduranceSurvival"),
+    "arbitration_farm": (["modules.arbitration_farm"], "ArbitrationFarm"),
 }
 
 # Порядок исполнения модулей в одном кадре (меньший — раньше).
@@ -66,6 +69,8 @@ MODULE_PRIORITY = {
     "ability_autopilot": 40,
     "effusion_farm": 45,
     "triggerbot": 48,
+    "arbitration_farm": 42,
+    "endurance_survival": 43,
     "overlay": 999,
 }
 
@@ -119,14 +124,27 @@ class WarframeAFKBot:
 
     def _load_modules(self):
         zones = self.cfg.get("afk_zones", {})
-        for name, (mod_path, cls_name) in MODULE_REGISTRY.items():
+        for name, spec in MODULE_REGISTRY.items():
+            mod_path, cls_name = spec if isinstance(spec, (tuple, list)) \
+                else (spec[0], spec[1])
             zcfg = zones.get(name, {})
             if name == "antiafk":
                 zcfg = self.cfg.get("antiafk", {})
             if not zcfg.get("enabled", False):
                 continue
+            errors = []
+            cls = None
+            paths = [mod_path] if isinstance(mod_path, str) else list(mod_path)
+            for mp in paths:
+                try:
+                    cls = import_module_class(mp, cls_name)
+                    break
+                except Exception as e:      # ImportError/AttributeError — пробуем следующий путь
+                    errors.append(f"{mp}: {e}")
+            if cls is None:
+                log.error("Модуль %s не загружен: %s", name, "; ".join(errors))
+                continue
             try:
-                cls = import_module_class(mod_path, cls_name)
                 inst = cls(bot=self, cfg=zcfg, name=name)
                 self.modules.append(inst)
                 log.info("Модуль загружен: %s (%s)", name, cls_name)
