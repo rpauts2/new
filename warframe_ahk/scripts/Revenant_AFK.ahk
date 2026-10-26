@@ -1,43 +1,61 @@
 ; ============================================================
 ; Revenant_AFK.ahk — Nightwave/Effusion AFK-комбо Mesmer-машины
-; База КД взята 1:1 из frames_db.py Python-версии бота.
-; Revenant: Q Mesmer Skin(25s) E Mesmer(22s) R Danse Macabre(30s) F Reave(35s)
-; Комбо: E -> Q -> R, sustain E,Q. Выживание: Q (щиты).
+; Работает через полную базу 34 фреймов (lib/WF_Frames.ahk, 1:1 из frames_db.py).
+; По умолчанию Revenant: Q Mesmer Skin(25s) E Mesmer(22s) R Danse Macabre(30s) F Reave(35s)
 ; Mutalist Revenant: E = Defection (притяжение+обращение врагов) — тот же тайминг.
 ;
-; HOTKEYS: F8 старт/стоп цикла | ^!P пауза | ^!X выход | F10 сброс сессии
+; HOTKEYS: F7 — циклическая смена фрейма (Revenant -> Mutalist -> Nova-Mutalist -> Mag-Corpse -> Khora)
+;          F8 старт/стоп цикла | ^!P пауза | ^!X выход | F10 сброс сессии
 ; ============================================================
 #Requires AutoHotkey v1.1
 #NoEnv
 SendMode Input
 SetWorkingDir %A_ScriptDir%
 #Include %A_ScriptDir%\..\lib\WF_Lib.ahk
+#Include %A_ScriptDir%\..\lib\WF_Frames.ahk
 
-; --- инициализация способностей Revenant ---
-WF_InitAbility("q", "q", 25)          ; Mesmer Skin (выживание)
-WF_InitAbility("e", "e", 22)          ; Mesmer / Defection (ядро AFK)
-WF_InitAbility("r", "r", 30)          ; Danse Macabre
-WF_InitAbility("f", "f", 35)          ; Reave
-WF_SurvivalSlot := "q"
+FrameList := ["revenant", "revenant-mutalist", "nova-mutalist", "mag-corpse-eater", "khora"]
+FrameIdx := 1
+
+ApplyFrame() {
+    global
+    name := FrameList[FrameIdx]
+    if (!WF_UseFrame(name)) {
+        MsgBox Фрейм '%name%' не найден в базе WF_Frames.ahk
+        return
+    }
+    survival := WF_SetSurvivalSlot("skin")       ; Mesmer Skin у Revenant-ов
+    if (survival = "")
+        survival := WF_SetSurvivalSlot("ward")   ; Chroma-style щиты если вдруг
+    WF_Status("Фрейм: " name " | combo: " WF_FrameCombo() " | sustain: " WF_FrameSustain())
+}
+
+F7::
+    FrameIdx := Mod(FrameIdx, FrameList.MaxIndex()) + 1
+    ApplyFrame()
+return
+
+ApplyFrame()   ; инициализация при старте скрипта
 
 Running := false
 F8::
     Running := !Running
     if Running {
-        WF_Status("Revenant AFK: цикл запущен")
+        ApplyFrame()
+        WF_Status("AFK-цикл: " WF_CurrentFrame " запущен")
         SetTimer RevLoop, 1200
         SetTimer WF_SessionWatchdog, 60000
     } else {
         SetTimer RevLoop, Off
-        WF_Status("Revenant AFK: стоп")
+        WF_Status("AFK-цикл: стоп")
     }
 return
 
 RevLoop:
     if (!Running || !WF_Enabled) return
-    ; открытие комбо (E->Q->R), дальше только sustain по КД
-    WF_RunCombo("e,q,r")
-    WF_RotateSustain("e,q,r,f")
+    ; открытие комбо из базы фрейма, дальше sustain по КД
+    WF_RunCombo(WF_FrameCombo())
+    WF_RotateSustain(WF_FrameSustain())
     WF_CheckDeathGuard()
     WF_AntiIdle()
 return
