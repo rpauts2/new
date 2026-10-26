@@ -9,6 +9,7 @@
 warframe_ahk/
 ├── WF_Main.ahk                 # лаунчер: F1 — меню выбора фарма
 ├── lib/WF_Lib.ahk              # ядро: КД-движок, humanize, пиксель-триггеры, death-guard
+├── lib/WF_Frames.ahk           # база 34 фреймов (автоген из frames_db.py; не правь руками)
 ├── scripts/
 │   ├── Revenant_AFK.ahk        # Mesmer-camp (E->Q->R), Nightwave/Effusion
 │   ├── Nova_Mutalist_Pull.ahk  # Null Pull стяжка + Molecular Prime + Null Star
@@ -17,6 +18,12 @@ warframe_ahk/
 │   └── Arbitration_AFK.ahk     # Арбитраж camp, F6 — режим (Mesmer/Scourge/Manual)
 └── tools/PickPixel.ahk         # калибровка пикселей HUD (Ctrl+Shift+C копирует X,Y,HEX)
 ```
+
+Все скрипты инициализируют способности **только через `WF_UseFrame("имя")`** из базы
+`lib/WF_Frames.ahk` — КД, клавиши, комбо/sustain и survival-слот подтягиваются автоматически,
+никакого хардкода в скриптах. При смене фрейма движок полностью сбрасывается
+(`WF_ResetAbilities`), поэтому залипания кулдаунов от предыдущего фрейма нет.
+Обновить базу после правки Python-`frames_db.py`: `python3 warframe_afk_bot/tools/gen_frames_ahk.py`.
 
 ## Быстрый старт
 1. Поставь **AutoHotkey v1.1** (https://www.autohotkey.com — инсталлятор сам даёт v1; для v2 нужен отдельный порт либы).
