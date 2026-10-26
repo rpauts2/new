@@ -84,6 +84,8 @@ WF_ResolveFrame(name) {
 }
 
 ; Инициализация КД-движка WF_Lib под фрейм. true = найден в базе
+; ВАЖНО: делает полный WF_ResetAbilities() сначала — иначе от предыдущего
+; фрейма остаются КД/клавиши в слотах, которых нет у нового.
 WF_UseFrame(name) {
     global
     key := WF_ResolveFrame(name)
@@ -91,6 +93,7 @@ WF_UseFrame(name) {
         return false
     f := WF_FRAMES[key]
     WF_CurrentFrame := key
+    WF_ResetAbilities()
     for slot, a in f.ab
         WF_InitAbility(slot, a.k, Round(a.cd / 1000), a.t, a.p)
     return true

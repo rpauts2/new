@@ -75,13 +75,29 @@ WF_Hold(key, ms) {
 ; Кулдаун-движок способностей (плоские глобалы — надёжно для #Include)
 ; slot_last_<slot> = A_TickCount последнего каста, slot_cd_<slot> = мс
 ; castType: press | hold | passive
-WF_InitAbility(slot, hotkey, cdSec, castType:="press", prio:=1) {
+; holdMs — реальная длительность удержания для hold-кастов (Ash Bladestorm и т.п.)
+WF_InitAbility(slot, hotkey, cdSec, castType:="press", prio:=1, holdMs:=350) {
     global
     SlotKey_%slot% := hotkey
     SlotCd_%slot%  := Round(cdSec * 1000)
     SlotType_%slot% := castType
     SlotPrio_%slot% := prio
+    SlotHold_%slot% := holdMs
     SlotLast_%slot% := 0
+}
+
+; Полный сброс КД-движка (вызывать перед WF_UseFrame при смене фрейма!)
+WF_ResetAbilities() {
+    global
+    for slot in ["q","e","r","f"] {
+        SlotKey_%slot% := ""
+        SlotCd_%slot%  := 0
+        SlotType_%slot% := "press"
+        SlotPrio_%slot% := 1
+        SlotHold_%slot% := 350
+        SlotLast_%slot% := 0
+    }
+    WF_SurvivalSlot := ""
 }
 
 ; Попытка скастовать слот если КД прошёл. true = скастовано
@@ -98,8 +114,11 @@ WF_Cast(slot) {
     last := SlotLast_%slot%
     if (A_TickCount - last < cd * 0.92)   ; 8% запас на variance баффов
         return false
+    holdMs := SlotHold_%slot%
+    if (!holdMs)
+        holdMs := 350
     if (SlotType_%slot% = "hold")
-        WF_Hold(hk, 350)
+        WF_Hold(hk, holdMs)
     else
         WF_Tap(hk)
     SlotLast_%slot% := A_TickCount
