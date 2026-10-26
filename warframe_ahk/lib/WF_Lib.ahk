@@ -50,7 +50,8 @@ WF_Delay(minD:="", maxD:="") {
 WF_Tap(key, baseMs:=45) {
     global
     if (!WF_Enabled) return
-    lo := Round(baseMs*0.7), hi := Round(baseMs*1.6)
+    lo := Round(baseMs*0.7)
+    hi := Round(baseMs*1.6)
     Random hold, lo, hi
     SendInput {%key% down}
     Sleep %hold%
@@ -62,7 +63,8 @@ WF_Tap(key, baseMs:=45) {
 WF_Hold(key, ms) {
     global
     if (!WF_Enabled) return
-    lo := Round(ms*0.9), hi := Round(ms*1.25)
+    lo := Round(ms*0.9)
+    hi := Round(ms*1.25)
     Random real, lo, hi
     SendInput {%key% down}
     Sleep %real%
@@ -158,9 +160,15 @@ WF_PixelOn(x, y, wantHex, tol:=30) {
     PixelGetColor c, x, y, RGB
     if (c = "")
         return false
-    cr := "0x" SubStr(c,3,2), cg := "0x" SubStr(c,5,2), cb := "0x" SubStr(c,7,2)
-    wr := "0x" SubStr(wantHex,1,2), wg := "0x" SubStr(wantHex,3,2), wb := "0x" SubStr(wantHex,5,2)
-    dr := Abs(cr-wr), dg := Abs(cg-wg), db := Abs(cb-wb)
+    cr := "0x" SubStr(c,3,2)
+    cg := "0x" SubStr(c,5,2)
+    cb := "0x" SubStr(c,7,2)
+    wr := "0x" SubStr(wantHex,1,2)
+    wg := "0x" SubStr(wantHex,3,2)
+    wb := "0x" SubStr(wantHex,5,2)
+    dr := Abs(cr-wr)
+    dg := Abs(cg-wg)
+    db := Abs(cb-wb)
     return (dr<=tol && dg<=tol && db<=tol)
 }
 
