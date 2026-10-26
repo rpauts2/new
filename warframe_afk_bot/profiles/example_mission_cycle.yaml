@@ -1,0 +1,64 @@
+# ============================================================
+#  Пример профиля: полный AFK-цикл миссии (Nightwave/Orokin Moon)
+#  Скриптуемый сценарий «как у топовых ботов комьюнити», но через экран+ввод.
+#  Запуск: afk_zones.profile_runner.enabled=true, profile_file=этот файл.
+# ============================================================
+name: "Orokin Moon — ночной цикл"
+description: |
+  Стоит на точке эффосов, стреляет, ждёт реварды, ходит в орбитер и
+  возвращает обратно. Подставьте свои шаблоны кнопок (tools/make_templates.py).
+
+vars:
+  cycles: 0
+
+start: wait_mission
+
+steps:
+  - name: wait_mission
+    when: "screen == mission"
+    actions:
+      - log: "Миссия активна — фармим"
+      - fire: {sec: 2.0}
+      - reload: true
+      - wait: [1.5, 3.0]
+      - click_color: loot_marker
+      - inc: {cycles: 1}
+    next: farm_loop
+
+  - name: farm_loop
+    when: "color enemy_marker exists"
+    repeat: 40            # ~минута активного фарма за шаг
+    actions:
+      - fire: {sec: 1.2}
+      - wait: [0.2, 0.6]
+      - click_color: loot_marker
+      - press: {key: r}
+      - wait: 1.7
+    next: check_extraction
+
+  - name: check_extraction
+    when: 'template "extraction_button.png" exists'
+    actions:
+      - log: "Extraction открыт!"
+      - click_template: extraction_button.png
+      - wait: [2, 4]
+      - repeat_until: {condition: "screen == reward_card", max_sec: 90}
+    next: rewards
+
+  - name: rewards
+    when: "screen == reward_card"
+    actions:
+      - click_template: continue_button.png
+      - wait: [1, 2]
+      - click_template: claim_button.png
+      - wait: [1, 2]
+      - click_template: ok_button.png
+      - wait: [2, 5]
+    next: back_to_mission
+
+  - name: back_to_mission
+    when: "screen != mission"
+    actions:
+      - log: "Ждём возвращения в миссию/меню..."
+      - repeat_until: {condition: "screen == mission", max_sec: 300}
+    next: wait_mission

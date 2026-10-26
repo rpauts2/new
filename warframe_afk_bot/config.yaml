@@ -1,0 +1,208 @@
+# ============================================================
+#  Warframe AFK Bot — основной конфиг
+#  Все значения можно менять без правки кода.
+# ============================================================
+
+game:
+  # Имя окна игры (Win32). На Linux/macOS оставь null — будет захват всего экрана
+  # (рекомендуется запускать игру в окне 1920x1080 без рамки).
+  window_title: "Warframe"
+  monitor: 1                 # номер монитора (1 = основной)
+  region: null               # например {left: 0, top: 0, width: 1920, height: 1080}
+
+capture:
+  fps: 12                    # частота анализа кадров
+  downscale: 1.0             # 0.5 = анализ в ~4 раза быстрее
+
+vision:
+  template_dir: templates    # папка со скриншотами-шаблонами (см. README)
+  default_threshold: 0.80    # порог совпадения шаблона (0..1)
+  multi_scale: true          # искать шаблон в нескольких масштабах
+  scales: [0.9, 0.95, 1.0, 1.05, 1.1]
+  hsv:                       # эталонные HSV-диапазоны (H:0-179 S:0-255 V:0-255)
+    enemy_marker:    {h_min: 75, h_max: 105, s_min: 150, v_min: 150}  # синий маркер над врагом
+    loot_marker:     {h_min: 10, h_max: 35,  s_min: 150, v_min: 150}  # оранжевый ромб лута
+    health_red:      {h_min: 0,  h_max: 8,   s_min: 120, v_min: 120}  # красная полоса HP
+    mod_reward_blue: {h_min: 95, h_max: 125, s_min: 80,  v_min: 80}   # синий фон карточки модов
+    credit_gold:     {h_min: 22, h_max: 40,  s_min: 120, v_min: 150}  # золотые кредиты
+  hud_hp_roi: [0.02, 0.90, 0.20, 0.05]   # зона полосы HP в HUD (доли экрана x,y,w,h)
+                                          # откалибруй скриншотом, если паника не срабатывает
+  hud_energy_roi: [0.24, 0.90, 0.20, 0.05]  # зона полосы энергии (для автопилота)
+  # PixelCheck-зоны как у Yagami Cyte-09.ahk: готовность способности по цвету иконки.
+  # roi в долях экрана; hex — цвет ГОТОВОЙ иконки; tolerance — отклонение 0..255.
+  hud_ability_triggers: {}               # пример: {"1": {roi: [0.86,0.925,0.012,0.014], hex: "5ad205", tol: 10}}
+
+input:
+  backend: auto              # auto / pyautogui / keyboard
+  mouse_move_time: 0.08      # плавность движения мыши (сек)
+  humanize: true             # случайные микро-паузы между действиями
+  jitter_ms: [40, 160]
+
+antiafk:
+  enabled: true
+  interval_sec: [45, 95]     # случайно каждые 45-95 сек
+  actions:                   # ротация безвредных «живых» действий
+    - {type: key, key: "shift", hold: 0.05}
+    - {type: key, key: "ctrl", hold: 0.05}
+    - {type: move_mouse_rel, dx: 3, dy: 2}
+    - {type: move_mouse_back}
+
+afk_zones:
+  # ---- AFK-ферма ЭФФОСОВ (Orokin Moon / Phobos, бесконечный спавн врагов) ----
+  effusion_farm:
+    enabled: true
+    aim: nearest_enemy_marker    # center | nearest_enemy_marker
+    fire_key: mouse_left
+    reload_key: r
+    reload_every_shots: 21
+    burst_enabled: false         # «залповый» режим: выглядит как живой игрок
+    burst_on_ms: 800
+    burst_off_ms: 2500
+    pickup_loot: true
+    check_interval_sec: 0.25
+
+  # ---- AFK-фарм ЛИТ (аномалия Lith Intact на Земле, окно раз в час) ----
+  lith_anomaly:
+    enabled: true
+    scan_templates: [anomaly_icon.png]
+    click_template: anomaly_icon.png
+    reward_templates: [mod_card.png, claim_button.png]
+    loop_delay_sec: 60
+
+  # ---- AFK-фарм НЕКРАЛОХ (Duviri «Loop» / Глубинный Шрам) ----
+  duviri_loop:
+    enabled: true
+    templates:
+      start_run: duviri_play.png
+      complete: objective_complete.png
+      extract: extraction_button.png
+      continue: continue_button.png
+      gear_choice: gear_choice_screen.png
+    poll_sec: 1.0
+
+  # ---- АВТОПИЛОТ СПОСОБНОСТЕЙ: кастует Q/E/R/F по базе фреймов ----
+  # Список фреймов и их ротаций: python tools/frames_info.py --list
+  ability_autopilot:
+    enabled: true
+    frame: "revenant"            # твой основной фарм-фрейм
+    auto_cast: true
+    combat_only: true            # кастовать только при видимых врагах
+    hp_panic_pct: 30             # HP ниже 30% -> режим выживания
+    cooldown_jitter_pct: 15      # рандомизация таймеров (анти-паттерн)
+    fire_during_rotate: false    # sec удержания ЛКМ между кастами (0/false = нет)
+    check_interval_sec: 0.5
+    extra_abilities: {}          # переопределения: {"2": {cooldown: 18}}
+
+  # ---- НЕКРАЛОХ / Duviri Pinn + Contagion активности ----
+  necralisk_farm:
+    enabled: false               # включай когда идёшь на Глубинный Шрам
+    mode: "pinn"                 # pinn | contagion
+    interact_key: "f"
+    min_loot_blobs: 2
+    stay_center: true
+    poll_sec: 1.0
+
+  # ---- ФОКУС v2: лампы школ (madurai/zenist/unairu/vazarin/naramon) ----
+  focus_fire_v2:
+    enabled: false
+    priority_school: "madurai"
+    interact_key: "f"
+    min_area: 60
+    check_interval_sec: 0.4
+
+  # ---- Универсальный повторяющийся макрос (запись: tools/hotkey_recorder.py) ----
+  repeat_macro:
+    enabled: false
+    macro_file: profiles/my_macro.json
+    loop_pause_sec: [2, 6]
+
+  # ---- Авто-ревард (кнопки после миссий: Продолжить/Забрать/OK) ----
+  auto_reward:
+    enabled: true
+    templates: [continue_button.png, claim_button.png, ok_button.png,
+                replay_button.png, exit_button.png, accept_button.png]
+    delay_first_sec: 3.0
+    max_clicks_per_screen: 12
+
+  # ---- ZOO-МЕТАТЕЛЬ: Profit-Taker Orb / Окукор / Bo / Glaive ----
+  # (перенос wf-macro zaw_throw.ahk + pt.ahk, Yagami Glaive.ahk)
+  zaw_throw:
+    enabled: false               # включай на PT-орбе или в Эффосах с Окукором
+    mode: profit_taker           # profit_taker | okukor | bo | glaive
+    fire_key: mouse_left
+    aim_key: "["
+    melee_key: e
+    jump_key: space
+    throw_every_sec: [6, 12]
+    shoot_hold_sec: 0.55
+    humanize_pct: 15
+
+  # ---- NORA SKIP: мгновенный выход из катсцен/рестарт лупа (wf-macro nora_skip) ----
+  nora_skip:
+    enabled: true
+    trigger_hotkey: f6
+    auto_on_cutscene: false      # авто по чёрным полосам (осторожно: может скипать сюжетку!)
+    exit_pos_rel: [0.74, 0.55]
+    exit_template: null          # например exit_button.png — надёжнее координат
+
+  # ---- AFK-АНОМАЛИИ: Nova loop / Mag vacuum corner (nova_farm.ahk, Nekros solo farm) ----
+  afk_anomaly:
+    enabled: false
+    tactic: mag_vacuum           # nova_loop | mag_vacuum | mutalist_pull
+    vacuum_slot: "4"             # слот Притяжения (Mag/Nova Mutalist = 4)
+    interval_ms: [90, 160]       # live-тюнинг: Alt+Up/Down
+    loop_pause_sec: [45, 55]     # для nova_loop (кулдаун Null Star)
+    enter_key: f
+
+  # ---- ВЫЖИВАНИЕ (Survival/Endless): автощиты + sustain + сбор лута ----
+  # (по мотивам rpauts2 _survival-bot.ahk и Yagami corner-tank)
+  endurance_survival:
+    enabled: false               # включай только внутри миссии Survival
+    frame: "valkyr"              # фрейм из базы: valkyr/rhino/nekros/chroma...
+    hp_panic_pct: 40
+    heal_cast_cooldown_sec: 20
+    loot_pickup: true
+    interact_key: "f"
+    wander_every_sec: [60, 120]
+    max_wave_time_sec: 1800      # авто-выход через 30 мин (0 = никогда)
+    exit_keys: ["esc", "enter"]
+
+  # ---- АРБИТРАЖ: танк-ротация щитов + притягивалки + mesmer-режим ----
+  arbitration_farm:
+    enabled: false
+    frame: "valkyr"              # tank-режим; для mesmer: revenant / revenant-mutalist
+    mode: tank                   # tank | mesmer
+    min_enemies: 3
+    pull_slots: ["2", "3"]       # Sonic Nexus (banshee 2), Pull (mag 3), Null Pull (nova-mutalist 2)
+    hp_panic_pct: 45
+    death_pct: 18                # ниже — аварийный выход Esc->Enter
+    fire_during_hold: false
+    check_interval_sec: 0.6
+
+  # ---- TRIGGERBOT: реакция по пиксель-триггеру прицела (Cyte-09 style) ----
+  # ВНИМАНИЕ: держи консервативно, это пограничная автоматизация!
+  triggerbot:
+    enabled: false
+    crosshair_roi_rel: [0.495, 0.49, 0.01, 0.02]
+    target_hex: "ff3b30"         # обязательно подбери через tools/calibrate.py
+    tolerance: 40
+    fire_key: mouse_left
+    min_interval_ms: [180, 420]
+    require_loot_or_enemy: enemy_marker
+
+  # ---- OVERLAY: мини-HUD поверх игры (аналог LazyHub UI) ----
+  overlay:
+    enabled: true
+    pos_rel: [0.006, 0.45]
+    refresh_sec: 1.0
+    show_warnings: true
+
+logging:
+  level: INFO
+  file: logs/bot.log
+  stats_file: logs/stats.json
+
+hotkeys:
+  toggle_bot: f8               # старт/стоп бота
+  panic_stop: f9               # мгновенная полная остановка
+  screenshot: print screen     # сохранить кадр в captures/ (для нарезки шаблонов)

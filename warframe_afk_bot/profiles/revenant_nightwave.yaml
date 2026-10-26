@@ -1,0 +1,22 @@
+# ============================================================
+#  Профиль «Revenant в углу» — классика Nightwave-фарма
+#  Способности по кулдаунам + микроогонь; почти без шаблонов.
+# ============================================================
+name: "Revenant Mesmer corner"
+vars: {casts: 0}
+start: idle_watch
+
+steps:
+  - name: idle_watch
+    when: "screen == mission"
+    actions:
+      - press: e          # Mesmer
+      - inc: {casts: 1}
+      - wait: [20, 28]
+      - press: q
+      - wait: [8, 14]
+      - fire: {sec: 0.8}
+      - click_color: loot_marker
+      - move_rel: [4, 0]
+      - move_rel: [-4, 0]
+    next: idle_watch

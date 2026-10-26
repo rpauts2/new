@@ -1,0 +1,22 @@
+# Автокаст «frost» — сгенерировано tools/frames_info.py
+name: "frost autopilot"
+vars: {casts: 0}
+start: rotate
+
+steps:
+  - name: rotate
+    when: "screen == mission"
+    actions:
+      - press: r
+      - inc: {casts: 1}
+      - wait: [21, 28]
+      - press: f
+      - inc: {casts: 1}
+      - wait: [29, 40]
+      - press: q
+      - inc: {casts: 1}
+      - wait: [10, 13]
+      - click_color: loot_marker
+      - move_rel: [3, 0]
+      - move_rel: [-3, 0]
+    next: rotate
