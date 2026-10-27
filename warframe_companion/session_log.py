@@ -120,6 +120,8 @@ def clear_log(log_path: str | Path, *, confirm: bool = False) -> Path:
 def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     completed: list[dict[str, Any]] = []
     rewards: Counter[str] = Counter()
+    rewards_by_mission: dict[str, Counter[str]] = defaultdict(Counter)
+    rewards_by_frame: dict[str, Counter[str]] = defaultdict(Counter)
     missions: Counter[str] = Counter()
     frames: Counter[str] = Counter()
     mission_minutes: dict[str, float] = defaultdict(float)
@@ -148,9 +150,27 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         reward = str(entry.get("reward", "")).strip()
         if reward:
             rewards[reward] += 1
+            rewards_by_mission[mission][reward] += 1
+            rewards_by_frame[frame][reward] += 1
 
     hours = total_minutes / 60
     reward_rates = {name: round(count / hours, 2) for name, count in rewards.items()} if hours > 0 else {}
+
+    def grouped_reward_rates(
+        reward_counts: dict[str, Counter[str]],
+        minutes: dict[str, float],
+    ) -> dict[str, dict[str, float]]:
+        result: dict[str, dict[str, float]] = {}
+        for group_name, counts in sorted(reward_counts.items()):
+            group_hours = minutes[group_name] / 60
+            result[group_name] = {
+                reward: round(count / group_hours, 2)
+                for reward, count in sorted(counts.items())
+            } if group_hours > 0 else {}
+        return result
+
+    reward_rates_by_mission = grouped_reward_rates(rewards_by_mission, mission_minutes)
+    reward_rates_by_frame = grouped_reward_rates(rewards_by_frame, frame_minutes)
 
     def grouped(counts: Counter[str], minutes: dict[str, float], done: Counter[str]) -> dict[str, dict[str, Any]]:
         result: dict[str, dict[str, Any]] = {}
@@ -172,6 +192,8 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "average_minutes": round(total_minutes / len(completed), 2) if completed else 0.0,
         "rewards": dict(sorted(rewards.items())),
         "reward_rates_per_hour": dict(sorted(reward_rates.items())),
+        "reward_rates_per_hour_by_mission": reward_rates_by_mission,
+        "reward_rates_per_hour_by_frame": reward_rates_by_frame,
         "missions": dict(sorted(missions.items())),
         "frames": dict(sorted(frames.items())),
         "by_mission": grouped(missions, mission_minutes, mission_completed),
@@ -237,6 +259,12 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  {name}: {count} (observed logging rate: {rate}/hour)")
             else:
                 print("  (none recorded)")
+            print("Observed reward logging rate by mission (items/hour):")
+            for mission, rates in stats["reward_rates_per_hour_by_mission"].items():
+                print(f"  {mission}: " + (", ".join(f"{reward}={rate}" for reward, rate in rates.items()) or "(no completed rewards)"))
+            print("Observed reward logging rate by frame (items/hour):")
+            for frame, rates in stats["reward_rates_per_hour_by_frame"].items():
+                print(f"  {frame}: " + (", ".join(f"{reward}={rate}" for reward, rate in rates.items()) or "(no completed rewards)"))
         elif args.command == "export-csv":
             export_csv(read_entries(args.log), args.output)
             print(f"Exported to {args.output}")
