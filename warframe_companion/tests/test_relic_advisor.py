@@ -1,12 +1,14 @@
+import io
 import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from relic_advisor import find_relics, load_dataset
+from relic_advisor import download_dataset, find_relics, load_dataset
 
 
 class RelicAdvisorTests(unittest.TestCase):
@@ -67,6 +69,26 @@ class RelicAdvisorTests(unittest.TestCase):
     def test_rejects_empty_query(self):
         with self.assertRaisesRegex(ValueError, "must not be empty"):
             find_relics(self.relics, "  ")
+
+
+    def test_download_validates_and_writes_dataset(self):
+        payload = json.dumps({"relics": self.relics, "timestamp": 456}).encode()
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "cache" / "relics.json"
+            with patch("relic_advisor.urllib.request.urlopen", return_value=io.BytesIO(payload)):
+                result = download_dataset(target, url="https://example.test/relics.json")
+            loaded, metadata = load_dataset(result)
+            self.assertEqual(len(loaded), 2)
+            self.assertEqual(metadata["timestamp"], 456)
+
+    def test_download_does_not_overwrite_cache_with_invalid_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "relics.json"
+            target.write_text('{"relics": [{"tier": "Lith", "relicName": "Old"}]}', encoding="utf-8")
+            with patch("relic_advisor.urllib.request.urlopen", return_value=io.BytesIO(b'{"not_relics": []}')):
+                with self.assertRaisesRegex(ValueError, "not a valid relic dataset"):
+                    download_dataset(target, url="https://example.test/relics.json")
+            self.assertIn("Old", target.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
