@@ -74,6 +74,21 @@ python warframe_companion/session_log.py export-csv --output missions.csv
 python warframe_companion/session_log.py --log ./my-missions.jsonl summary
 ```
 
+### Резервная копия и очистка истории
+
+```bash
+# Создать резервную копию рядом с журналом
+python warframe_companion/session_log.py backup
+
+# Или указать путь для резервной копии
+python warframe_companion/session_log.py backup --output ./my-missions-backup.jsonl
+
+# Очистить журнал только после создания резервной копии
+python warframe_companion/session_log.py clear --confirm
+```
+
+Очистка требует явного флага `--confirm`, сначала проверяет журнал и создаёт резервную копию, и только затем очищает исходный файл. Некорректный журнал не очищается. Существующий файл резервной копии не перезаписывается. Для нестандартного журнала путь указывается до команды, например: `python warframe_companion/session_log.py --log ./my-missions.jsonl backup`.
+
 ## Тесты
 
 ```bash
