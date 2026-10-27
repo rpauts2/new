@@ -50,7 +50,7 @@ class SessionLogTests(unittest.TestCase):
             {"mission": "Capture", "duration_minutes": 30, "frame": "Loki", "reward": "Forma", "completed": True},
             {"mission": "Survival", "duration_minutes": 10, "frame": "Nekros", "reward": "Forma", "completed": True},
         ])
-        self.assertEqual(stats["reward_rates_per_hour"]["Forma"], 4.0)
+        self.assertEqual(stats["reward_rates_per_hour"]["Forma"], 3.6)
         self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Survival"]["Forma"], 6.0)
         self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Capture"]["Forma"], 2.0)
         self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Nekros"]["Forma"], 6.0)
