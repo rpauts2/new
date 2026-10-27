@@ -22,13 +22,17 @@ python warframe_companion/advisor.py --mission Spy --goal stealth --limit 5
 Новый модуль ищет награды по локальному JSON-файлу данных WFCD. Можно использовать файл `relics.json` или общий `all.json` из [warframe-drop-data](https://github.com/WFCD/warframe-drop-data). В README источника описаны поля реликвий и вероятности выпадения.
 
 ```bash
+# Разово скачать актуальный JSON в указанный путь и выполнить поиск
+python warframe_companion/relic_advisor.py --data ./relics.json --download --item "Forma Blueprint"
+
+# Дальше можно искать по сохранённому файлу без сети
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Forma Blueprint"
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Prime Part" --tier Axi
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Forma Blueprint" --exact
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Forma Blueprint" --state Radiant
 ```
 
-Модуль не придумывает шансы: он выводит только значения из выбранного файла. Если формат файла отличается от поддерживаемых вариантов, появится понятная ошибка. Сверяй дату источника и состояние улучшения реликвии, поскольку вероятности отличаются.
+Флаг `--download` загружает `https://drops.warframestat.us/data/relics.json` перед поиском. Скачанный JSON проверяется до замены файла, поэтому некорректный ответ не затрёт существующий кэш. Без `--download` модуль работает полностью офлайн. Модуль не придумывает шансы: он выводит только значения из выбранного файла. Если формат файла отличается от поддерживаемых вариантов, появится понятная ошибка. Сверяй дату источника и состояние улучшения реликвии, поскольку вероятности отличаются.
 
 Источники:
 - Drop tables и реликвии: https://github.com/WFCD/warframe-drop-data
