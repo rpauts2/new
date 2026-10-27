@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import shutil
 import sys
 from collections import Counter
 from datetime import datetime, timezone
@@ -66,6 +67,38 @@ def read_entries(log_path: str | Path) -> list[dict[str, Any]]:
     return entries
 
 
+def backup_log(log_path: str | Path, backup_path: str | Path | None = None) -> Path:
+    """Validate and copy the log before any destructive operation."""
+    source = Path(log_path).expanduser()
+    if not source.exists():
+        raise ValueError(f"Log file does not exist: {source}")
+    read_entries(source)  # Refuse to bless a malformed log as a good backup.
+    if backup_path is None:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        destination = source.with_name(f"{source.name}.{stamp}.backup")
+    else:
+        destination = Path(backup_path).expanduser()
+    if source.resolve() == destination.resolve():
+        raise ValueError("Backup destination must differ from the log file.")
+    if destination.exists():
+        raise FileExistsError(f"Backup already exists; refusing to overwrite: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+    return destination
+
+
+def clear_log(log_path: str | Path, *, confirm: bool = False) -> Path:
+    """Back up the valid log, then empty it. Explicit confirmation is mandatory."""
+    if not confirm:
+        raise ValueError("Clearing history requires explicit confirmation (--confirm).")
+    source = Path(log_path).expanduser()
+    backup = backup_log(source)
+    # Only truncate after the backup exists and has been created successfully.
+    with source.open("w", encoding="utf-8"):
+        pass
+    return backup
+
+
 def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     completed = [entry for entry in entries if entry.get("completed", True)]
     total_minutes = sum(float(entry.get("duration_minutes", 0)) for entry in completed)
@@ -118,6 +151,10 @@ def main(argv: list[str] | None = None) -> int:
     subparsers.add_parser("summary", help="Show personal statistics")
     export = subparsers.add_parser("export-csv", help="Export entries to CSV")
     export.add_argument("--output", required=True, type=Path)
+    backup = subparsers.add_parser("backup", help="Create a validated backup of the log")
+    backup.add_argument("--output", type=Path, help="Optional backup destination")
+    clear = subparsers.add_parser("clear", help="Back up and clear the log")
+    clear.add_argument("--confirm", action="store_true", help="Required confirmation; a backup is created first")
 
     args = parser.parse_args(argv)
     try:
@@ -144,6 +181,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "export-csv":
             export_csv(read_entries(args.log), args.output)
             print(f"Exported to {args.output}")
+        elif args.command == "backup":
+            path = backup_log(args.log, args.output)
+            print(f"Backup created: {path}")
+        elif args.command == "clear":
+            path = clear_log(args.log, confirm=args.confirm)
+            print(f"History cleared. Backup saved to: {path}")
     except (OSError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
