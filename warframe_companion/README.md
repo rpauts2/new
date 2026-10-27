@@ -13,9 +13,11 @@
 python warframe_companion/advisor.py --list-missions
 python warframe_companion/advisor.py --mission Survival
 python warframe_companion/advisor.py --mission Spy --goal stealth --limit 5
+python warframe_companion/advisor.py --mission Survival --exclude "Nekros,Nova" --limit 5
+python warframe_companion/advisor.py --mission Survival --format json
 ```
 
-Рекомендации основаны на общих ролях, а не на живом рейтинге меты. Сборка и обновления могут изменить результат.
+Рекомендации основаны на общих ролях, а не на живом рейтинге меты. Сборка и обновления могут изменить результат. `--exclude` исключает варфреймы, которые у тебя не открыты или которые не хочешь использовать. `--format json` выдаёт структурированный результат для будущего интерфейса и интеграций.
 
 ## Поиск наград реликвий
 
