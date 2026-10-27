@@ -39,6 +39,22 @@ class SessionLogTests(unittest.TestCase):
         self.assertEqual(stats["by_mission"]["Spy"]["completed_sessions"], 0)
         self.assertEqual(stats["by_frame"]["Nekros"]["completed_minutes"], 12.0)
         self.assertEqual(stats["by_frame"]["Loki"]["completed_minutes"], 0.0)
+        self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Survival"], {"Forma": 10.0})
+        self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Spy"], {})
+        self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Nekros"], {"Forma": 10.0})
+        self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Loki"], {})
+
+    def test_reward_rates_do_not_mix_time_between_missions_or_frames(self):
+        stats = summarize([
+            {"mission": "Survival", "duration_minutes": 10, "frame": "Nekros", "reward": "Forma", "completed": True},
+            {"mission": "Capture", "duration_minutes": 30, "frame": "Loki", "reward": "Forma", "completed": True},
+            {"mission": "Survival", "duration_minutes": 10, "frame": "Nekros", "reward": "Forma", "completed": True},
+        ])
+        self.assertEqual(stats["reward_rates_per_hour"]["Forma"], 4.0)
+        self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Survival"]["Forma"], 6.0)
+        self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Capture"]["Forma"], 2.0)
+        self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Nekros"]["Forma"], 6.0)
+        self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Loki"]["Forma"], 2.0)
 
     def test_rejects_invalid_input(self):
         with tempfile.TemporaryDirectory() as directory:
