@@ -26,6 +26,18 @@ def _validated_duration(value: Any, *, label: str = "duration_minutes") -> float
     return duration
 
 
+def _validated_attempts(value: Any, *, label: str = "attempts") -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a positive integer")
+    try:
+        attempts = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be a positive integer") from exc
+    if attempts <= 0 or str(value).strip() not in {str(attempts), f"+{attempts}"}:
+        raise ValueError(f"{label} must be a positive integer")
+    return attempts
+
+
 def add_entry(
     log_path: str | Path,
     mission: str,
@@ -35,12 +47,15 @@ def add_entry(
     relic: str = "",
     reward: str = "",
     notes: str = "",
+    target_item: str = "",
+    attempts: int = 1,
     completed: bool = True,
 ) -> dict[str, Any]:
     mission = mission.strip()
     if not mission:
         raise ValueError("mission must not be empty")
     duration = _validated_duration(duration_minutes)
+    attempt_count = _validated_attempts(attempts)
     entry: dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "mission": mission,
@@ -48,6 +63,8 @@ def add_entry(
         "frame": frame.strip(),
         "relic": relic.strip(),
         "reward": reward.strip(),
+        "target_item": target_item.strip(),
+        "attempts": attempt_count,
         "notes": notes.strip(),
         "completed": bool(completed),
     }
@@ -128,6 +145,7 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     frame_minutes: dict[str, float] = defaultdict(float)
     mission_completed: Counter[str] = Counter()
     frame_completed: Counter[str] = Counter()
+    target_farms: dict[str, dict[str, Any]] = {}
     total_minutes = 0.0
 
     for index, entry in enumerate(entries, 1):
@@ -153,6 +171,25 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
             rewards_by_mission[mission][reward] += 1
             rewards_by_frame[frame][reward] += 1
 
+        target_item = str(entry.get("target_item", "")).strip()
+        if target_item:
+            attempts = _validated_attempts(entry.get("attempts", 1), label=f"attempts in session entry {index}")
+            target_key = target_item.casefold()
+            if target_key not in target_farms:
+                target_farms[target_key] = {
+                    "target_item": target_item,
+                    "sessions": 0,
+                    "attempts": 0,
+                    "hits": 0,
+                    "completed_minutes": 0.0,
+                }
+            farm = target_farms[target_key]
+            farm["sessions"] += 1
+            farm["attempts"] += attempts
+            farm["completed_minutes"] += duration
+            if reward.casefold() == target_key:
+                farm["hits"] += 1
+
     hours = total_minutes / 60
     reward_rates = {name: round(count / hours, 2) for name, count in rewards.items()} if hours > 0 else {}
 
@@ -173,6 +210,19 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
 
     reward_rates_by_mission = grouped_reward_rates(rewards_by_mission, mission_minutes, missions)
     reward_rates_by_frame = grouped_reward_rates(rewards_by_frame, frame_minutes, frames)
+
+    target_farm_stats: dict[str, dict[str, Any]] = {}
+    for farm in target_farms.values():
+        farm_hours = farm["completed_minutes"] / 60
+        target_farm_stats[farm["target_item"]] = {
+            "sessions": farm["sessions"],
+            "attempts": farm["attempts"],
+            "hits": farm["hits"],
+            "completed_minutes": round(farm["completed_minutes"], 2),
+            "attempts_per_hour": round(farm["attempts"] / farm_hours, 2) if farm_hours else 0.0,
+            "hits_per_hour": round(farm["hits"] / farm_hours, 2) if farm_hours else 0.0,
+            "observed_hit_rate_percent": round(farm["hits"] / farm["attempts"] * 100, 2) if farm["attempts"] else 0.0,
+        }
 
     def grouped(counts: Counter[str], minutes: dict[str, float], done: Counter[str]) -> dict[str, dict[str, Any]]:
         result: dict[str, dict[str, Any]] = {}
@@ -196,6 +246,7 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "reward_rates_per_hour": dict(sorted(reward_rates.items())),
         "reward_rates_per_hour_by_mission": reward_rates_by_mission,
         "reward_rates_per_hour_by_frame": reward_rates_by_frame,
+        "target_farms": dict(sorted(target_farm_stats.items(), key=lambda item: item[0].casefold())),
         "missions": dict(sorted(missions.items())),
         "frames": dict(sorted(frames.items())),
         "by_mission": grouped(missions, mission_minutes, mission_completed),
@@ -204,7 +255,7 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def export_csv(entries: list[dict[str, Any]], output_path: str | Path) -> None:
-    fields = ["timestamp", "mission", "duration_minutes", "frame", "relic", "reward", "notes", "completed"]
+    fields = ["timestamp", "mission", "duration_minutes", "frame", "relic", "reward", "target_item", "attempts", "notes", "completed"]
     path = Path(output_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
@@ -224,6 +275,8 @@ def main(argv: list[str] | None = None) -> int:
     add.add_argument("--frame", default="")
     add.add_argument("--relic", default="")
     add.add_argument("--reward", default="")
+    add.add_argument("--target-item", default="", help="Item being farmed; a hit is counted when reward matches this name")
+    add.add_argument("--attempts", type=int, default=1, help="Number of target attempts represented by this session (default: 1)")
     add.add_argument("--notes", default="")
     add.add_argument("--failed", action="store_true", help="Mark this session as not completed")
 
@@ -240,7 +293,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "add":
             entry = add_entry(
                 args.log, args.mission, args.minutes, frame=args.frame, relic=args.relic,
-                reward=args.reward, notes=args.notes, completed=not args.failed,
+                reward=args.reward, target_item=args.target_item, attempts=args.attempts,
+                notes=args.notes, completed=not args.failed,
             )
             print(f"Saved: {entry['mission']} | {entry['duration_minutes']} min")
         elif args.command == "summary":
@@ -267,6 +321,9 @@ def main(argv: list[str] | None = None) -> int:
             print("Observed reward logging rate by frame (items/hour):")
             for frame, rates in stats["reward_rates_per_hour_by_frame"].items():
                 print(f"  {frame}: " + (", ".join(f"{reward}={rate}" for reward, rate in rates.items()) or "(no completed rewards)"))
+            print("Target farm results (manual logs, not drop-rate predictions):")
+            for item, row in stats["target_farms"].items():
+                print(f"  {item}: {row['hits']}/{row['attempts']} hits, {row['observed_hit_rate_percent']}% observed, {row['attempts_per_hour']} attempts/hour, {row['hits_per_hour']} hits/hour")
         elif args.command == "export-csv":
             export_csv(read_entries(args.log), args.output)
             print(f"Exported to {args.output}")
