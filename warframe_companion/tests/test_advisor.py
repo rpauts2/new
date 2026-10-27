@@ -1,3 +1,5 @@
+import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -33,6 +35,27 @@ class AdvisorTests(unittest.TestCase):
     def test_mission_catalog_is_nonempty(self):
         self.assertIn("disruption", MISSION_ROLES)
         self.assertIn("void cascade", MISSION_ROLES)
+
+
+    def test_excluded_frames_are_removed(self):
+        results = recommend("Survival", limit=10, exclude=("Nekros", "Nova"))
+        names = [item["frame"] for item in results]
+        self.assertNotIn("Nekros", names)
+        self.assertNotIn("Nova", names)
+
+    def test_exclusion_is_case_and_spacing_insensitive(self):
+        results = recommend("Survival", limit=10, exclude=("  nEkRoS  ",))
+        self.assertNotIn("Nekros", [item["frame"] for item in results])
+
+    def test_cli_json_output_is_valid(self):
+        script = Path(__file__).resolve().parents[1] / "advisor.py"
+        completed = subprocess.run(
+            [sys.executable, str(script), "--mission", "Survival", "--format", "json", "--limit", "2"],
+            check=True, capture_output=True, text=True,
+        )
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["mission"], "Survival")
+        self.assertEqual(len(payload["recommendations"]), 2)
 
 
 if __name__ == "__main__":
