@@ -5,14 +5,25 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import shutil
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 DEFAULT_LOG = Path.home() / ".warframe_companion" / "missions.jsonl"
+
+
+def _validated_duration(value: Any, *, label: str = "duration_minutes") -> float:
+    try:
+        duration = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be a finite number greater than zero") from exc
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError(f"{label} must be a finite number greater than zero")
+    return duration
 
 
 def add_entry(
@@ -29,12 +40,11 @@ def add_entry(
     mission = mission.strip()
     if not mission:
         raise ValueError("mission must not be empty")
-    if duration_minutes <= 0:
-        raise ValueError("duration_minutes must be greater than zero")
+    duration = _validated_duration(duration_minutes)
     entry: dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "mission": mission,
-        "duration_minutes": round(float(duration_minutes), 2),
+        "duration_minutes": round(duration, 2),
         "frame": frame.strip(),
         "relic": relic.strip(),
         "reward": reward.strip(),
@@ -44,7 +54,7 @@ def add_entry(
     path = Path(log_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as stream:
-        stream.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        stream.write(json.dumps(entry, ensure_ascii=False, allow_nan=False) + "\n")
     return entry
 
 
@@ -72,10 +82,14 @@ def backup_log(log_path: str | Path, backup_path: str | Path | None = None) -> P
     source = Path(log_path).expanduser()
     if not source.exists():
         raise ValueError(f"Log file does not exist: {source}")
-    read_entries(source)  # Refuse to bless a malformed log as a good backup.
+    read_entries(source)
     if backup_path is None:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         destination = source.with_name(f"{source.name}.{stamp}.backup")
+        suffix = 1
+        while destination.exists():
+            destination = source.with_name(f"{source.name}.{stamp}.{suffix}.backup")
+            suffix += 1
     else:
         destination = Path(backup_path).expanduser()
     if source.resolve() == destination.resolve():
@@ -83,7 +97,11 @@ def backup_log(log_path: str | Path, backup_path: str | Path | None = None) -> P
     if destination.exists():
         raise FileExistsError(f"Backup already exists; refusing to overwrite: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, destination)
+    # Exclusive creation prevents accidental overwrite if another backup races us.
+    with destination.open("xb") as stream:
+        with source.open("rb") as original:
+            shutil.copyfileobj(original, stream)
+    shutil.copystat(source, destination)
     return destination
 
 
@@ -100,19 +118,53 @@ def clear_log(log_path: str | Path, *, confirm: bool = False) -> Path:
 
 
 def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    completed = [entry for entry in entries if entry.get("completed", True)]
-    total_minutes = sum(float(entry.get("duration_minutes", 0)) for entry in completed)
-    rewards = Counter(
-        str(entry.get("reward", "")).strip()
-        for entry in completed
-        if str(entry.get("reward", "")).strip()
-    )
-    missions = Counter(str(entry.get("mission", "Unknown")) for entry in entries)
+    completed: list[dict[str, Any]] = []
+    rewards: Counter[str] = Counter()
+    missions: Counter[str] = Counter()
+    frames: Counter[str] = Counter()
+    mission_minutes: dict[str, float] = defaultdict(float)
+    frame_minutes: dict[str, float] = defaultdict(float)
+    mission_completed: Counter[str] = Counter()
+    frame_completed: Counter[str] = Counter()
+    total_minutes = 0.0
+
+    for index, entry in enumerate(entries, 1):
+        mission = str(entry.get("mission") or "Unknown").strip() or "Unknown"
+        frame = str(entry.get("frame") or "").strip() or "Not recorded"
+        missions[mission] += 1
+        frames[frame] += 1
+        is_completed = entry.get("completed", True)
+        if not isinstance(is_completed, bool):
+            raise ValueError(f"completed must be true or false in session entry {index}")
+        if not is_completed:
+            continue
+        duration = _validated_duration(entry.get("duration_minutes", 0), label=f"duration_minutes in session entry {index}")
+        completed.append(entry)
+        total_minutes += duration
+        mission_minutes[mission] += duration
+        frame_minutes[frame] += duration
+        mission_completed[mission] += 1
+        frame_completed[frame] += 1
+        reward = str(entry.get("reward", "")).strip()
+        if reward:
+            rewards[reward] += 1
+
     hours = total_minutes / 60
-    reward_rates = {
-        name: round(count / hours, 2)
-        for name, count in rewards.items()
-    } if hours > 0 else {}
+    reward_rates = {name: round(count / hours, 2) for name, count in rewards.items()} if hours > 0 else {}
+
+    def grouped(counts: Counter[str], minutes: dict[str, float], done: Counter[str]) -> dict[str, dict[str, Any]]:
+        result: dict[str, dict[str, Any]] = {}
+        for name, count in sorted(counts.items()):
+            completed_count = done[name]
+            elapsed = minutes[name]
+            result[name] = {
+                "sessions": count,
+                "completed_sessions": completed_count,
+                "completed_minutes": round(elapsed, 2),
+                "average_completed_minutes": round(elapsed / completed_count, 2) if completed_count else 0.0,
+            }
+        return result
+
     return {
         "sessions": len(entries),
         "completed_sessions": len(completed),
@@ -121,6 +173,9 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "rewards": dict(sorted(rewards.items())),
         "reward_rates_per_hour": dict(sorted(reward_rates.items())),
         "missions": dict(sorted(missions.items())),
+        "frames": dict(sorted(frames.items())),
+        "by_mission": grouped(missions, mission_minutes, mission_completed),
+        "by_frame": grouped(frames, frame_minutes, frame_completed),
     }
 
 
@@ -169,13 +224,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Sessions: {stats['sessions']} (completed: {stats['completed_sessions']})")
             print(f"Completed mission time: {stats['total_minutes']} min")
             print(f"Average completed session: {stats['average_minutes']} min")
-            print("Missions:")
-            for name, count in stats["missions"].items():
-                print(f"  {name}: {count}")
+            print("By mission:")
+            for name, row in stats["by_mission"].items():
+                print(f"  {name}: {row['sessions']} runs, {row['completed_minutes']} completed min, average {row['average_completed_minutes']} min")
+            print("By frame:")
+            for name, row in stats["by_frame"].items():
+                print(f"  {name}: {row['sessions']} runs, {row['completed_minutes']} completed min, average {row['average_completed_minutes']} min")
             print("Recorded rewards:")
             if stats["rewards"]:
                 for name, count in stats["rewards"].items():
-                    print(f"  {name}: {count}")
+                    rate = stats["reward_rates_per_hour"].get(name, 0)
+                    print(f"  {name}: {count} (observed logging rate: {rate}/hour)")
             else:
                 print("  (none recorded)")
         elif args.command == "export-csv":
