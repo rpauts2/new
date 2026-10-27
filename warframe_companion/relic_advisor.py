@@ -80,10 +80,11 @@ def download_dataset(
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             raw = response.read()
+            headers = getattr(response, "headers", {})
             response_headers = {
-                key: response.headers.get(key, "")
+                key: headers.get(key, "")
                 for key in ("ETag", "Last-Modified")
-                if response.headers.get(key)
+                if headers.get(key)
             }
     except (OSError, urllib.error.URLError) as exc:
         raise ValueError(f"Could not download relic data from {url}: {exc}") from exc
