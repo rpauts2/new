@@ -79,6 +79,9 @@ class RelicAdvisorTests(unittest.TestCase):
             loaded, metadata = load_dataset(result)
             self.assertEqual(len(loaded), 2)
             self.assertEqual(metadata["timestamp"], 456)
+            self.assertEqual(metadata["source_url"], "https://example.test/relics.json")
+            self.assertIn("downloaded_at", metadata)
+            self.assertTrue(Path(str(target) + ".meta.json").exists())
 
     def test_download_does_not_overwrite_cache_with_invalid_data(self):
         with tempfile.TemporaryDirectory() as directory:
