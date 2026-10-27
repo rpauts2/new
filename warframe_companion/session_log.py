@@ -161,8 +161,9 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         minutes: dict[str, float],
     ) -> dict[str, dict[str, float]]:
         result: dict[str, dict[str, float]] = {}
-        for group_name, counts in sorted(reward_counts.items()):
-            group_hours = minutes[group_name] / 60
+        for group_name, elapsed_minutes in sorted(minutes.items()):
+            counts = reward_counts.get(group_name, Counter())
+            group_hours = elapsed_minutes / 60
             result[group_name] = {
                 reward: round(count / group_hours, 2)
                 for reward, count in sorted(counts.items())
