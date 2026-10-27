@@ -21,9 +21,9 @@ class SessionLogTests(unittest.TestCase):
 
     def test_summary_counts_only_completed_time_and_rewards(self):
         entries = [
-            {"mission": "Survival", "duration_minutes": 5, "reward": "Forma", "completed": True},
-            {"mission": "Survival", "duration_minutes": 7, "reward": "Forma", "completed": True},
-            {"mission": "Spy", "duration_minutes": 3, "reward": "Part", "completed": False},
+            {"mission": "Survival", "duration_minutes": 5, "frame": "Nekros", "reward": "Forma", "completed": True},
+            {"mission": "Survival", "duration_minutes": 7, "frame": "Nekros", "reward": "Forma", "completed": True},
+            {"mission": "Spy", "duration_minutes": 3, "frame": "Loki", "reward": "Part", "completed": False},
         ]
         stats = summarize(entries)
         self.assertEqual(stats["sessions"], 3)
@@ -33,14 +33,28 @@ class SessionLogTests(unittest.TestCase):
         self.assertEqual(stats["rewards"], {"Forma": 2})
         self.assertEqual(stats["reward_rates_per_hour"], {"Forma": 10.0})
         self.assertEqual(stats["missions"], {"Spy": 1, "Survival": 2})
+        self.assertEqual(stats["by_mission"]["Survival"], {
+            "sessions": 2, "completed_sessions": 2, "completed_minutes": 12.0, "average_completed_minutes": 6.0,
+        })
+        self.assertEqual(stats["by_mission"]["Spy"]["completed_sessions"], 0)
+        self.assertEqual(stats["by_frame"]["Nekros"]["completed_minutes"], 12.0)
+        self.assertEqual(stats["by_frame"]["Loki"]["completed_minutes"], 0.0)
 
     def test_rejects_invalid_input(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "log.jsonl"
             with self.assertRaisesRegex(ValueError, "must not be empty"):
                 add_entry(path, " ", 5)
-            with self.assertRaisesRegex(ValueError, "greater than zero"):
-                add_entry(path, "Survival", 0)
+            for duration in (0, -1, float("nan"), float("inf"), "not a number"):
+                with self.subTest(duration=duration):
+                    with self.assertRaisesRegex(ValueError, "finite number greater than zero"):
+                        add_entry(path, "Survival", duration)
+
+    def test_summary_rejects_corrupt_duration_and_completion_flag(self):
+        with self.assertRaisesRegex(ValueError, "session entry 1"):
+            summarize([{"mission": "Survival", "duration_minutes": "invalid"}])
+        with self.assertRaisesRegex(ValueError, "completed must be true or false"):
+            summarize([{"mission": "Survival", "duration_minutes": 5, "completed": "yes"}])
 
     def test_missing_log_is_empty(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -66,6 +80,16 @@ class SessionLogTests(unittest.TestCase):
             self.assertEqual(source.read_bytes(), backup.read_bytes())
             with self.assertRaises(FileExistsError):
                 backup_log(source, backup)
+
+    def test_automatic_backups_do_not_overwrite_same_second(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "missions.jsonl"
+            add_entry(source, "Survival", 5, reward="Forma")
+            first = backup_log(source)
+            second = backup_log(source)
+            self.assertNotEqual(first, second)
+            self.assertTrue(first.exists())
+            self.assertTrue(second.exists())
 
     def test_clear_requires_confirmation_and_creates_backup(self):
         with tempfile.TemporaryDirectory() as directory:
