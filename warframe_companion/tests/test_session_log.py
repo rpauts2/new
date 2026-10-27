@@ -31,6 +31,7 @@ class SessionLogTests(unittest.TestCase):
         self.assertEqual(stats["total_minutes"], 12)
         self.assertEqual(stats["average_minutes"], 6)
         self.assertEqual(stats["rewards"], {"Forma": 2})
+        self.assertEqual(stats["reward_rates_per_hour"], {"Forma": 10.0})
         self.assertEqual(stats["missions"], {"Spy": 1, "Survival": 2})
 
     def test_rejects_invalid_input(self):
