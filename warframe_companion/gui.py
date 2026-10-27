@@ -232,10 +232,14 @@ class CompanionApp(tk.Tk):
             "Миссии:",
         ]
         lines.extend(f"  {name}: {count}" for name, count in stats["missions"].items())
-        lines.extend(["", "Награды:"])
+        lines.extend(["", "Награды (записанные завершённые сессии):"])
         lines.extend(f"  {name}: {count}" for name, count in stats["rewards"].items())
         if not stats["rewards"]:
             lines.append("  Пока ничего не записано.")
+        lines.extend(["", "Наблюдаемая частота записей (шт./час):"])
+        lines.extend(f"  {name}: {rate}" for name, rate in stats["reward_rates_per_hour"].items())
+        if not stats["reward_rates_per_hour"]:
+            lines.append("  Недостаточно данных.")
         self._set_text(self.log_output, "\n".join(lines))
 
     def _save_log(self) -> None:
