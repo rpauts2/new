@@ -1,29 +1,52 @@
-# Warframe Mission & Frame Advisor
+# Warframe Companion
 
-A local, manual-play companion that suggests Warframes by mission type and preferred role. It does not capture the game screen, send keyboard/mouse input, automate combat, or attempt to bypass inactivity checks.
+Локальный помощник для планирования миссий и ручного учёта результатов. Не захватывает экран игры, не отправляет игровые нажатия и не автоматизирует прохождение.
 
-## Requirements
+## Требования
+
 - Python 3.10+
-- No third-party packages
+- Сторонние Python-пакеты не нужны.
 
-## Run
-~~~bash
+## Советник по варфреймам
+
+```bash
 python warframe_companion/advisor.py --list-missions
 python warframe_companion/advisor.py --mission Survival
 python warframe_companion/advisor.py --mission Spy --goal stealth --limit 5
+```
+
+Рекомендации основаны на общих ролях, а не на живом рейтинге меты. Сборка, модификаторы миссии, состав отряда и обновления могут изменить результат.
+
+## Ручной журнал миссий
+
+Запись результата (все поля кроме миссии и времени необязательны):
+
+```bash
+python warframe_companion/session_log.py add --mission Survival --minutes 5 --frame Nekros --relic "Lith A1" --reward "Forma Blueprint"
+python warframe_companion/session_log.py add --mission Spy --minutes 4 --failed --notes "Миссия не завершена"
+python warframe_companion/session_log.py summary
+python warframe_companion/session_log.py export-csv --output missions.csv
+```
+
+По умолчанию журнал хранится в `~/.warframe_companion/missions.jsonl`. Чтобы использовать другой файл, передайте `--log` **до** подкоманды, например:
+
+```bash
+python warframe_companion/session_log.py --log ./my-missions.jsonl summary
+```
+
+Журнал хранится локально. Записи добавляются вручную, поэтому статистика отражает только то, что было внесено. Экспорт CSV открывается в табличных редакторах.
+
+## Тесты
+
+```bash
 python -m unittest discover -s warframe_companion/tests -v
-~~~
+```
 
-## How it works
-- Mission types have broad role priorities.
-- Each frame has broad role tags and a short caveat.
-- Results show matched roles and a transparent score.
-- This is a starter advisor, not a live meta tier list. Updates, mods, Archon Shards, Helminth choices, enemy faction, modifiers, player investment, and squad composition can change the answer.
+## Данные и источники
 
-## Expand the catalog
-Add or update a Frame entry only after checking a current reference. Prefer the current WARFRAME Wiki or maintained WFCD item data:
-- Mission types: https://wiki.warframe.com/w/Mission
-- Reward rotations: https://wiki.warframe.com/w/AABC
-- Frame and ability data: https://github.com/WFCD/warframe-items
+Каталог ролей советника пока является стартовым и должен проверяться по актуальным источникам:
+- Миссии: https://wiki.warframe.com/w/Mission
+- Ротации наград: https://wiki.warframe.com/w/AABC
+- Предметы и варфреймы: https://github.com/WFCD/warframe-items
 
-This tool provides planning information for a player who remains in control. It is not a game bot and does not automate gameplay.
+Проект предназначен для справки и анализа личных результатов, пока игрок сам управляет игровым процессом.
