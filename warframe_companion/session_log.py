@@ -75,12 +75,18 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
         if str(entry.get("reward", "")).strip()
     )
     missions = Counter(str(entry.get("mission", "Unknown")) for entry in entries)
+    hours = total_minutes / 60
+    reward_rates = {
+        name: round(count / hours, 2)
+        for name, count in rewards.items()
+    } if hours > 0 else {}
     return {
         "sessions": len(entries),
         "completed_sessions": len(completed),
         "total_minutes": round(total_minutes, 2),
         "average_minutes": round(total_minutes / len(completed), 2) if completed else 0.0,
         "rewards": dict(sorted(rewards.items())),
+        "reward_rates_per_hour": dict(sorted(reward_rates.items())),
         "missions": dict(sorted(missions.items())),
     }
 
