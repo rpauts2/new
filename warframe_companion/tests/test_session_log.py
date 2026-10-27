@@ -12,12 +12,14 @@ class SessionLogTests(unittest.TestCase):
     def test_add_and_read_entry(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "nested" / "missions.jsonl"
-            saved = add_entry(path, "Survival", 5, frame="Nekros", relic="Lith A1", reward="Forma Blueprint")
+            saved = add_entry(path, "Survival", 5, frame="Nekros", relic="Lith A1", reward="Forma Blueprint", target_item="Forma Blueprint", attempts=2)
             loaded = read_entries(path)
             self.assertEqual(len(loaded), 1)
             self.assertEqual(loaded[0]["mission"], "Survival")
             self.assertEqual(loaded[0]["reward"], "Forma Blueprint")
             self.assertTrue(saved["completed"])
+            self.assertEqual(loaded[0]["target_item"], "Forma Blueprint")
+            self.assertEqual(loaded[0]["attempts"], 2)
 
     def test_summary_counts_only_completed_time_and_rewards(self):
         entries = [
@@ -43,6 +45,7 @@ class SessionLogTests(unittest.TestCase):
         self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Spy"], {})
         self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Nekros"], {"Forma": 10.0})
         self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Loki"], {})
+        self.assertEqual(stats["target_farms"], {})
 
     def test_reward_rates_do_not_mix_time_between_missions_or_frames(self):
         stats = summarize([
@@ -55,6 +58,26 @@ class SessionLogTests(unittest.TestCase):
         self.assertEqual(stats["reward_rates_per_hour_by_mission"]["Capture"]["Forma"], 2.0)
         self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Nekros"]["Forma"], 6.0)
         self.assertEqual(stats["reward_rates_per_hour_by_frame"]["Loki"]["Forma"], 2.0)
+
+    def test_target_farm_stats_use_explicit_target_and_attempt_count(self):
+        stats = summarize([
+            {"mission": "Survival", "duration_minutes": 10, "frame": "Nekros", "reward": "Forma Blueprint", "target_item": "Forma Blueprint", "attempts": 2, "completed": True},
+            {"mission": "Survival", "duration_minutes": 20, "frame": "Nekros", "reward": "Orokin Cell", "target_item": "Forma Blueprint", "attempts": 4, "completed": True},
+            {"mission": "Capture", "duration_minutes": 5, "frame": "Loki", "reward": "forma blueprint", "target_item": "Forma Blueprint", "attempts": 1, "completed": True},
+            {"mission": "Survival", "duration_minutes": 5, "frame": "Nekros", "reward": "Forma Blueprint", "target_item": "Forma Blueprint", "attempts": 1, "completed": False},
+        ])
+        row = stats["target_farms"]["Forma Blueprint"]
+        self.assertEqual(row["sessions"], 3)
+        self.assertEqual(row["attempts"], 7)
+        self.assertEqual(row["hits"], 2)
+        self.assertEqual(row["completed_minutes"], 35.0)
+        self.assertEqual(row["attempts_per_hour"], 12.0)
+        self.assertEqual(row["hits_per_hour"], 3.43)
+        self.assertEqual(row["observed_hit_rate_percent"], 28.57)
+
+    def test_target_farm_rejects_invalid_attempt_count(self):
+        with self.assertRaisesRegex(ValueError, "attempts in session entry 1"):
+            summarize([{"mission": "Survival", "duration_minutes": 5, "target_item": "Forma", "attempts": 0, "reward": "", "completed": True}])
 
     def test_rejects_invalid_input(self):
         with tempfile.TemporaryDirectory() as directory:
