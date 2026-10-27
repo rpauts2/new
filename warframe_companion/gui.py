@@ -196,11 +196,14 @@ class CompanionApp(tk.Tk):
             "frame": tk.StringVar(),
             "relic": tk.StringVar(),
             "reward": tk.StringVar(),
+            "target_item": tk.StringVar(),
+            "attempts": tk.StringVar(value="1"),
             "notes": tk.StringVar(),
         }
         fields = [
             ("Миссия", "mission"), ("Минуты", "minutes"), ("Варфрейм", "frame"),
-            ("Реликвия", "relic"), ("Награда", "reward"), ("Заметка", "notes"),
+            ("Реликвия", "relic"), ("Награда", "reward"), ("Целевой предмет", "target_item"),
+            ("Попытки", "attempts"), ("Заметка", "notes"),
         ]
         for index, (label, key) in enumerate(fields):
             row, col = divmod(index, 2)
@@ -258,6 +261,15 @@ class CompanionApp(tk.Tk):
         lines.extend(["", "Частота записей по варфреймам (шт./час):"])
         for frame, rates in stats["reward_rates_per_hour_by_frame"].items():
             lines.append(f"  {frame}: " + (", ".join(f"{reward}: {rate}" for reward, rate in rates.items()) or "нет записанных наград"))
+        lines.extend(["", "Целевой фарм (ручной учёт, не прогноз шанса дропа):"])
+        for item, row in stats["target_farms"].items():
+            lines.append(
+                f"  {item}: {row['hits']}/{row['attempts']} попаданий, "
+                f"{row['observed_hit_rate_percent']}% по журналу, "
+                f"{row['attempts_per_hour']} попыток/ч, {row['hits_per_hour']} попаданий/ч"
+            )
+        if not stats["target_farms"]:
+            lines.append("  Укажи целевой предмет при сохранении результата, чтобы начать учёт.")
         self._set_text(self.log_output, "\n".join(lines))
 
     def _save_log(self) -> None:
@@ -270,6 +282,8 @@ class CompanionApp(tk.Tk):
                 frame=self.log_vars["frame"].get(),
                 relic=self.log_vars["relic"].get(),
                 reward=self.log_vars["reward"].get(),
+                target_item=self.log_vars["target_item"].get(),
+                attempts=int(self.log_vars["attempts"].get()),
                 notes=self.log_vars["notes"].get(),
             )
         except (OSError, ValueError) as exc:
