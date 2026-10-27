@@ -10,24 +10,21 @@ import argparse
 import json
 import re
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
+
+
+DEFAULT_DATA_URL = "https://drops.warframestat.us/data/relics.json"
+USER_AGENT = "WarframeCompanion/0.1 (relic data downloader)"
 
 
 def normalize(value: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9]+", " ", value.casefold()).split())
 
 
-def load_dataset(path: str | Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    source = Path(path).expanduser()
-    try:
-        with source.open("r", encoding="utf-8-sig") as stream:
-            payload = json.load(stream)
-    except OSError as exc:
-        raise ValueError(f"Cannot read data file '{source}': {exc}") from exc
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid JSON in '{source}' at line {exc.lineno}, column {exc.colno}") from exc
-
+def _extract_relics(payload: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     metadata: dict[str, Any] = {}
     if isinstance(payload, list):
         relics = payload
@@ -44,6 +41,50 @@ def load_dataset(path: str | Path) -> tuple[list[dict[str, Any]], dict[str, Any]
     if not valid:
         raise ValueError("The dataset contains no valid relic records.")
     return valid, metadata
+
+
+def load_dataset(path: str | Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    source = Path(path).expanduser()
+    try:
+        with source.open("r", encoding="utf-8-sig") as stream:
+            payload = json.load(stream)
+    except OSError as exc:
+        raise ValueError(f"Cannot read data file '{source}': {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in '{source}' at line {exc.lineno}, column {exc.colno}") from exc
+    return _extract_relics(payload)
+
+
+def download_dataset(
+    destination: str | Path,
+    *,
+    url: str = DEFAULT_DATA_URL,
+    timeout: float = 20.0,
+) -> Path:
+    """Download WFCD relic JSON and replace the cache only after validation."""
+    target = Path(destination).expanduser()
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read()
+    except (OSError, urllib.error.URLError) as exc:
+        raise ValueError(f"Could not download relic data from {url}: {exc}") from exc
+
+    try:
+        payload = json.loads(raw.decode("utf-8-sig"))
+        _extract_relics(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"Downloaded data from {url} is not a valid relic dataset: {exc}") from exc
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(target.name + ".download.tmp")
+    try:
+        temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(target)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+    return target
 
 
 def _reward_rows(relic: dict[str, Any]) -> list[tuple[str, Any, str]]:
@@ -127,8 +168,10 @@ def find_relics(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Search a local WFCD relic JSON file for reward chances.")
+    parser = argparse.ArgumentParser(description="Search WFCD relic data for reward chances.")
     parser.add_argument("--data", required=True, type=Path, help="Path to WFCD relics.json or all.json")
+    parser.add_argument("--download", action="store_true", help="Download latest WFCD relic data to --data before searching")
+    parser.add_argument("--data-url", default=DEFAULT_DATA_URL, help=argparse.SUPPRESS)
     parser.add_argument("--item", required=True, help="Reward item name or part of its name")
     parser.add_argument("--tier", default="", help="Optional relic tier: Lith, Meso, Neo, or Axi")
     parser.add_argument("--state", default="", help="Optional refinement state, e.g. Intact or Radiant")
@@ -136,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
+        if args.download:
+            download_dataset(args.data, url=args.data_url)
         relics, metadata = load_dataset(args.data)
         matches = find_relics(relics, args.item, tier=args.tier, state=args.state, exact=args.exact)
     except ValueError as exc:
