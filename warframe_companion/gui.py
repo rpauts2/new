@@ -22,7 +22,8 @@ class CompanionApp(tk.Tk):
         self.title("Warframe Companion")
         self.geometry("900x650")
         self.minsize(760, 540)
-        self.configure(padx=12, pady=12)
+        container = ttk.Frame(self, padding=12)
+        container.pack(fill="both", expand=True)
 
         style = ttk.Style(self)
         try:
@@ -32,14 +33,14 @@ class CompanionApp(tk.Tk):
         style.configure("Title.TLabel", font=("Segoe UI", 16, "bold"))
         style.configure("Hint.TLabel", foreground="#666666")
 
-        ttk.Label(self, text="WARFRAME COMPANION", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(container, text="WARFRAME COMPANION", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
-            self,
+            container,
             text="Планирование, поиск наград и личная статистика. Игрой управляет только игрок.",
             style="Hint.TLabel",
         ).pack(anchor="w", pady=(2, 12))
 
-        tabs = ttk.Notebook(self)
+        tabs = ttk.Notebook(container)
         tabs.pack(fill="both", expand=True)
         self.advisor_tab = ttk.Frame(tabs, padding=12)
         self.relic_tab = ttk.Frame(tabs, padding=12)
