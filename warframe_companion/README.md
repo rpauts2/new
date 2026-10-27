@@ -68,7 +68,7 @@ python warframe_companion/session_log.py summary
 python warframe_companion/session_log.py export-csv --output missions.csv
 ```
 
-По умолчанию журнал хранится в `~/.warframe_companion/missions.jsonl`. Чтобы использовать другой файл, передай `--log` до подкоманды:
+В сводке дополнительно считается наблюдаемое число записанных наград в час по завершённым сессиям. Это частота твоих ручных записей, а не гарантия игрового дропа и не прогноз будущих результатов. По умолчанию журнал хранится в `~/.warframe_companion/missions.jsonl`. Чтобы использовать другой файл, передай `--log` до подкоманды:
 
 ```bash
 python warframe_companion/session_log.py --log ./my-missions.jsonl summary
