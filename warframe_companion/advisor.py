@@ -2,6 +2,7 @@
 """Manual-play Warframe mission/frame advisor. No game input or screen capture."""
 from __future__ import annotations
 import argparse
+import json
 from dataclasses import dataclass
 
 @dataclass(frozen=True)
@@ -75,7 +76,7 @@ GOAL_ROLE = {
 def normalize(value: str) -> str:
     return " ".join(value.strip().lower().replace("_", " ").replace("-", " ").split())
 
-def recommend(mission: str, goal: str | None = None, limit: int = 5) -> list[dict[str, object]]:
+def recommend(mission: str, goal: str | None = None, limit: int = 5, exclude: tuple[str, ...] = ()) -> list[dict[str, object]]:
     mission_key = normalize(mission)
     if mission_key not in MISSION_ROLES:
         raise ValueError(f"Unknown mission '{mission}'. Supported missions: {', '.join(sorted(MISSION_ROLES))}")
@@ -86,8 +87,11 @@ def recommend(mission: str, goal: str | None = None, limit: int = 5) -> list[dic
         if goal_key not in GOAL_ROLE:
             raise ValueError(f"Unknown goal '{goal}'. Supported goals: {', '.join(sorted(GOAL_ROLE))}")
         target_roles = tuple(dict.fromkeys((*mission_roles, *GOAL_ROLE[goal_key])))
+    excluded = {normalize(name) for name in exclude if normalize(name)}
     ranked = []
     for frame in FRAMES:
+        if normalize(frame.name) in excluded:
+            continue
         matches = [role for role in target_roles if role in frame.roles]
         if matches:
             score = sum(3 if role in mission_roles else 1 for role in matches)
@@ -100,6 +104,8 @@ def main() -> int:
     parser.add_argument("--mission", help="Mission type, e.g. Survival, Disruption, Spy")
     parser.add_argument("--goal", choices=sorted(GOAL_ROLE), help="Optional priority")
     parser.add_argument("--limit", type=int, default=5, help="Number of recommendations (1-10)")
+    parser.add_argument("--exclude", default="", help="Comma-separated frame names to exclude, e.g. Nekros, Nova")
+    parser.add_argument("--format", choices=("text", "json"), default="text", help="Output format for scripts or other tools")
     parser.add_argument("--list-missions", action="store_true", help="List supported mission types")
     args = parser.parse_args()
     if args.list_missions:
@@ -108,9 +114,12 @@ def main() -> int:
     if not args.mission:
         parser.error("--mission is required unless --list-missions is used")
     try:
-        results = recommend(args.mission, args.goal, args.limit)
+        results = recommend(args.mission, args.goal, args.limit, tuple(args.exclude.split(",")))
     except ValueError as exc:
         parser.error(str(exc))
+    if args.format == "json":
+        print(json.dumps({"mission": args.mission, "goal": args.goal, "recommendations": results}, ensure_ascii=False, indent=2))
+        return 0
     print(f"Recommendations for {args.mission}" + (f" | goal: {args.goal}" if args.goal else ""))
     for index, item in enumerate(results, 1):
         roles = ", ".join(str(role).replace("_", " ") for role in item["matched_roles"])
