@@ -19,7 +19,7 @@ python warframe_companion/gui.py
 В приложении есть три вкладки:
 - **Советник:** выбор миссии, цели и исключаемых варфреймов.
 - **Реликвии:** поиск награды в локальном JSON, фильтры по эпохе и состоянию, опциональная загрузка набора данных.
-- **Журнал:** ручное сохранение результата миссии, статистика и CSV-экспорт.
+- **Журнал:** ручное сохранение результата миссии, статистика, CSV-экспорт, резервное копирование и очистка истории с подтверждением.
 
 Данные и журнал остаются на компьютере. Вкладка реликвий обращается к сети только по кнопке загрузки. GUI не управляет игрой.
 
@@ -40,24 +40,21 @@ python warframe_companion/advisor.py --mission Survival --format json
 Модуль ищет награды в JSON-файле данных WFCD. Можно использовать `data/relics.json` из [warframe-drop-data](https://github.com/WFCD/warframe-drop-data). В README источника описана схема: каждая запись реликвии содержит эпоху, имя, состояние и список наград с записанными шансами.
 
 ```bash
-# Разово скачать набор данных в указанный путь и выполнить поиск
 python warframe_companion/relic_advisor.py --data ./relics.json --download --item "Forma Blueprint"
-
-# Далее искать по сохранённому файлу без сети
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Forma Blueprint"
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Prime Part" --tier Axi
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Forma Blueprint" --exact
 python warframe_companion/relic_advisor.py --data ./relics.json --item "Forma Blueprint" --state Radiant
 ```
 
-Флаг `--download` загружает `https://raw.githubusercontent.com/WFCD/warframe-drop-data/main/data/relics.json` перед поиском. Скачанный JSON проверяется до замены файла, поэтому некорректный ответ не затрёт существующий кэш. Без `--download` модуль работает офлайн. Модуль не придумывает шансы: он выводит только значения из выбранного файла. При загрузке рядом с JSON сохраняется файл `.meta.json` с URL источника, временем загрузки и HTTP-метаданными (если сервер их отдаёт). При чтении эти сведения показываются вместе с метаданными самого набора.
+Флаг `--download` загружает `https://raw.githubusercontent.com/WFCD/warframe-drop-data/main/data/relics.json` перед поиском. Скачанный JSON проверяется до замены файла, поэтому некорректный ответ не затрёт существующий кэш. Без `--download` модуль работает офлайн. При загрузке рядом с JSON сохраняется файл `.meta.json` с URL источника, временем загрузки и HTTP-метаданными, если сервер их отдаёт.
 
 В репозитории есть небольшой fixture, повторяющий структуру, документированную WFCD. Полный текущий набор данных пока не прошёл сквозную проверку в этой среде, поэтому перед использованием проверь актуальность источника и состояние улучшения реликвии.
 
 Источники:
-- Drop tables и реликвии: https://github.com/WFCD/warframe-drop-data
-- Предметы, категории и изображения: https://github.com/WFCD/warframe-items
-- Официальная Wiki: https://wiki.warframe.com/w/Drop_Tables
+- https://github.com/WFCD/warframe-drop-data
+- https://github.com/WFCD/warframe-items
+- https://wiki.warframe.com/w/Drop_Tables
 
 ## Ручной журнал миссий
 
@@ -68,11 +65,7 @@ python warframe_companion/session_log.py summary
 python warframe_companion/session_log.py export-csv --output missions.csv
 ```
 
-В сводке дополнительно считается наблюдаемое число записанных наград в час по завершённым сессиям. Это частота твоих ручных записей, а не гарантия игрового дропа и не прогноз будущих результатов. По умолчанию журнал хранится в `~/.warframe_companion/missions.jsonl`. Чтобы использовать другой файл, передай `--log` до подкоманды:
-
-```bash
-python warframe_companion/session_log.py --log ./my-missions.jsonl summary
-```
+В сводке считается наблюдаемое число записанных наград в час по завершённым сессиям. Это частота ручных записей, а не гарантия игрового дропа и не прогноз будущих результатов. По умолчанию журнал хранится в `~/.warframe_companion/missions.jsonl`. Чтобы использовать другой файл, передай `--log` до подкоманды.
 
 ### Резервная копия и очистка истории
 
@@ -80,14 +73,14 @@ python warframe_companion/session_log.py --log ./my-missions.jsonl summary
 # Создать резервную копию рядом с журналом
 python warframe_companion/session_log.py backup
 
-# Или указать путь для резервной копии
+# Указать путь для копии
 python warframe_companion/session_log.py backup --output ./my-missions-backup.jsonl
 
-# Очистить журнал только после создания резервной копии
+# Очистить журнал, предварительно создав резервную копию
 python warframe_companion/session_log.py clear --confirm
 ```
 
-Очистка требует явного флага `--confirm`, сначала проверяет журнал и создаёт резервную копию, и только затем очищает исходный файл. Некорректный журнал не очищается. Существующий файл резервной копии не перезаписывается. Для нестандартного журнала путь указывается до команды, например: `python warframe_companion/session_log.py --log ./my-missions.jsonl backup`.
+Очистка требует явного флага `--confirm`, сначала проверяет журнал и создаёт копию, и только затем очищает исходный файл. Некорректный журнал не очищается, а существующая резервная копия не перезаписывается. В графическом интерфейсе есть отдельные кнопки для резервного копирования и очистки с диалогом подтверждения.
 
 ## Тесты
 
