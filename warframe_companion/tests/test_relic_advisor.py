@@ -70,7 +70,6 @@ class RelicAdvisorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must not be empty"):
             find_relics(self.relics, "  ")
 
-
     def test_download_validates_and_writes_dataset(self):
         payload = json.dumps({"relics": self.relics, "timestamp": 456}).encode()
         with tempfile.TemporaryDirectory() as directory:
@@ -89,6 +88,21 @@ class RelicAdvisorTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "not a valid relic dataset"):
                     download_dataset(target, url="https://example.test/relics.json")
             self.assertIn("Old", target.read_text(encoding="utf-8"))
+
+    def test_wfcd_schema_fixture_loads_and_filters_by_relic_state(self):
+        fixture = Path(__file__).parent / "fixtures" / "wfcd_relics_sample.json"
+        relics, metadata = load_dataset(fixture)
+        self.assertEqual(metadata["timestamp"], 1761500000000)
+
+        results = find_relics(relics, "Akstiletto Prime Barrel", tier="Axi", state="Radiant")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["relic"], "A1")
+        self.assertEqual(results[0]["state"], "Radiant")
+        self.assertEqual(results[0]["chance"], 20)
+
+        intact_results = find_relics(relics, "Akstiletto Prime Barrel", state="Intact")
+        self.assertEqual(len(intact_results), 1)
+        self.assertEqual(intact_results[0]["chance"], 11)
 
 
 if __name__ == "__main__":
