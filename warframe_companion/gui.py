@@ -231,9 +231,19 @@ class CompanionApp(tk.Tk):
             f"Время завершённых миссий: {stats['total_minutes']} мин",
             f"Средняя длительность: {stats['average_minutes']} мин",
             "",
-            "Миссии:",
+            "По миссиям (завершённое время / средняя длительность):",
         ]
-        lines.extend(f"  {name}: {count}" for name, count in stats["missions"].items())
+        for name, row in stats["by_mission"].items():
+            lines.append(
+                f"  {name}: {row['sessions']} сессий, {row['completed_minutes']} мин, "
+                f"среднее {row['average_completed_minutes']} мин"
+            )
+        lines.extend(["", "По варфреймам (завершённое время / средняя длительность):"])
+        for name, row in stats["by_frame"].items():
+            lines.append(
+                f"  {name}: {row['sessions']} сессий, {row['completed_minutes']} мин, "
+                f"среднее {row['average_completed_minutes']} мин"
+            )
         lines.extend(["", "Награды (записанные завершённые сессии):"])
         lines.extend(f"  {name}: {count}" for name, count in stats["rewards"].items())
         if not stats["rewards"]:
