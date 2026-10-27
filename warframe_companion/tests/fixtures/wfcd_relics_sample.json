@@ -1,0 +1,78 @@
+{
+  "timestamp": 1761500000000,
+  "modified": 1761400000000,
+  "relics": [
+    {
+      "_id": "sample-axi-a1-intact",
+      "tier": "Axi",
+      "relicName": "A1",
+      "state": "Intact",
+      "rewards": [
+        {
+          "_id": "sample-1",
+          "itemName": "Akstiletto Prime Barrel",
+          "chance": 11,
+          "rarity": "Uncommon"
+        },
+        {
+          "_id": "sample-2",
+          "itemName": "Forma Blueprint",
+          "chance": 25.33,
+          "rarity": "Common"
+        },
+        {
+          "_id": "sample-3",
+          "itemName": "Example Prime Part",
+          "chance": 2,
+          "rarity": "Rare"
+        }
+      ]
+    },
+    {
+      "_id": "sample-axi-a1-radiant",
+      "tier": "Axi",
+      "relicName": "A1",
+      "state": "Radiant",
+      "rewards": [
+        {
+          "_id": "sample-4",
+          "itemName": "Akstiletto Prime Barrel",
+          "chance": 20,
+          "rarity": "Uncommon"
+        },
+        {
+          "_id": "sample-5",
+          "itemName": "Forma Blueprint",
+          "chance": 16.67,
+          "rarity": "Common"
+        },
+        {
+          "_id": "sample-6",
+          "itemName": "Example Prime Part",
+          "chance": 10,
+          "rarity": "Rare"
+        }
+      ]
+    },
+    {
+      "_id": "sample-lith-b2-intact",
+      "tier": "Lith",
+      "relicName": "B2",
+      "state": "Intact",
+      "rewards": [
+        {
+          "_id": "sample-7",
+          "itemName": "Forma Blueprint",
+          "chance": 25.33,
+          "rarity": "Common"
+        },
+        {
+          "_id": "sample-8",
+          "itemName": "Another Prime Part",
+          "chance": 2,
+          "rarity": "Rare"
+        }
+      ]
+    }
+  ]
+}
