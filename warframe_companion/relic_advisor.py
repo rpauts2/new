@@ -41,7 +41,15 @@ def _extract_relics(payload: Any) -> tuple[list[dict[str, Any]], dict[str, Any]]
     valid = [entry for entry in relics if isinstance(entry, dict)]
     if not valid:
         raise ValueError("The dataset contains no valid relic records.")
-    return valid, metadata
+    schema_valid = [
+        entry for entry in valid
+        if str(entry.get("tier", "")).strip()
+        and str(entry.get("relicName") or entry.get("name") or "").strip()
+        and isinstance(entry.get("rewards"), (list, dict))
+    ]
+    if not schema_valid:
+        raise ValueError("No relic records contain the expected tier, relic name, and rewards fields.")
+    return schema_valid, metadata
 
 
 def load_dataset(path: str | Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
