@@ -147,7 +147,7 @@ def find_relics(
             if (normalized_name != query if exact else query not in normalized_name):
                 continue
             effective_state = reward_state or relic_state
-            if state_query and effective_state and normalize(effective_state) != state_query:
+            if state_query and normalize(effective_state) != state_query:
                 continue
             matches.append({
                 "tier": relic_tier,
