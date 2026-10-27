@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 import re
 import sys
 import urllib.error
@@ -52,7 +53,18 @@ def load_dataset(path: str | Path) -> tuple[list[dict[str, Any]], dict[str, Any]
         raise ValueError(f"Cannot read data file '{source}': {exc}") from exc
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON in '{source}' at line {exc.lineno}, column {exc.colno}") from exc
-    return _extract_relics(payload)
+    relics, metadata = _extract_relics(payload)
+    sidecar = source.with_name(source.name + ".meta.json")
+    if sidecar.exists():
+        try:
+            with sidecar.open("r", encoding="utf-8") as stream:
+                local_metadata = json.load(stream)
+            if isinstance(local_metadata, dict):
+                metadata = {**metadata, **local_metadata}
+        except (OSError, json.JSONDecodeError):
+            # A damaged metadata sidecar must not make the valid relic data unusable.
+            pass
+    return relics, metadata
 
 
 def download_dataset(
@@ -64,9 +76,15 @@ def download_dataset(
     """Download WFCD relic JSON and replace the cache only after validation."""
     target = Path(destination).expanduser()
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    response_headers: dict[str, str] = {}
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             raw = response.read()
+            response_headers = {
+                key: response.headers.get(key, "")
+                for key in ("ETag", "Last-Modified")
+                if response.headers.get(key)
+            }
     except (OSError, urllib.error.URLError) as exc:
         raise ValueError(f"Could not download relic data from {url}: {exc}") from exc
 
@@ -84,6 +102,20 @@ def download_dataset(
     finally:
         if temporary.exists():
             temporary.unlink()
+
+    sidecar = target.with_name(target.name + ".meta.json")
+    sidecar_temp = sidecar.with_name(sidecar.name + ".tmp")
+    source_metadata = {
+        "source_url": url,
+        "downloaded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        **response_headers,
+    }
+    try:
+        sidecar_temp.write_text(json.dumps(source_metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        sidecar_temp.replace(sidecar)
+    finally:
+        if sidecar_temp.exists():
+            sidecar_temp.unlink()
     return target
 
 
