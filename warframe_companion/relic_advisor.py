@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_DATA_URL = "https://drops.warframestat.us/data/relics.json"
+DEFAULT_DATA_URL = "https://raw.githubusercontent.com/WFCD/warframe-drop-data/main/data/relics.json"
 USER_AGENT = "WarframeCompanion/0.1 (relic data downloader)"
 
 
@@ -169,7 +169,7 @@ def find_relics(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Search WFCD relic data for reward chances.")
-    parser.add_argument("--data", required=True, type=Path, help="Path to WFCD relics.json or all.json")
+    parser.add_argument("--data", required=True, type=Path, help="Path to WFCD data/relics.json")
     parser.add_argument("--download", action="store_true", help="Download latest WFCD relic data to --data before searching")
     parser.add_argument("--data-url", default=DEFAULT_DATA_URL, help=argparse.SUPPRESS)
     parser.add_argument("--item", required=True, help="Reward item name or part of its name")
