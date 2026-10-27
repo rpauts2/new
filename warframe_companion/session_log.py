@@ -159,19 +159,20 @@ def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:
     def grouped_reward_rates(
         reward_counts: dict[str, Counter[str]],
         minutes: dict[str, float],
+        group_names: Counter[str],
     ) -> dict[str, dict[str, float]]:
         result: dict[str, dict[str, float]] = {}
-        for group_name, elapsed_minutes in sorted(minutes.items()):
+        for group_name in sorted(group_names):
             counts = reward_counts.get(group_name, Counter())
-            group_hours = elapsed_minutes / 60
+            group_hours = minutes.get(group_name, 0.0) / 60
             result[group_name] = {
                 reward: round(count / group_hours, 2)
                 for reward, count in sorted(counts.items())
             } if group_hours > 0 else {}
         return result
 
-    reward_rates_by_mission = grouped_reward_rates(rewards_by_mission, mission_minutes)
-    reward_rates_by_frame = grouped_reward_rates(rewards_by_frame, frame_minutes)
+    reward_rates_by_mission = grouped_reward_rates(rewards_by_mission, mission_minutes, missions)
+    reward_rates_by_frame = grouped_reward_rates(rewards_by_frame, frame_minutes, frames)
 
     def grouped(counts: Counter[str], minutes: dict[str, float], done: Counter[str]) -> dict[str, dict[str, Any]]:
         result: dict[str, dict[str, Any]] = {}
