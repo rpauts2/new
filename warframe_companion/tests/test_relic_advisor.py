@@ -66,6 +66,13 @@ class RelicAdvisorTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Expected a relic list"):
                 load_dataset(path)
 
+    def test_rejects_records_missing_required_relic_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "malformed.json"
+            path.write_text(json.dumps({"relics": [{"tier": "Lith", "relicName": "A1"}]}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "expected tier, relic name, and rewards"):
+                load_dataset(path)
+
     def test_rejects_empty_query(self):
         with self.assertRaisesRegex(ValueError, "must not be empty"):
             find_relics(self.relics, "  ")
