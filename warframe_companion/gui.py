@@ -213,6 +213,8 @@ class CompanionApp(tk.Tk):
         ttk.Button(buttons, text="Сохранить результат", command=self._save_log).pack(side="left")
         ttk.Button(buttons, text="Обновить статистику", command=self._show_summary).pack(side="left", padx=(8, 0))
         ttk.Button(buttons, text="Экспорт CSV", command=self._export_csv).pack(side="left", padx=(8, 0))
+        ttk.Button(buttons, text="Резервная копия", command=self._backup_log).pack(side="left", padx=(8, 0))
+        ttk.Button(buttons, text="Очистить историю", command=self._clear_log).pack(side="left", padx=(8, 0))
         self.log_output = self._text(self.log_tab, 14)
         self.log_output.pack(fill="both", expand=True)
         self._show_summary()
@@ -273,6 +275,38 @@ class CompanionApp(tk.Tk):
             messagebox.showerror("Ошибка экспорта", str(exc), parent=self)
             return
         messagebox.showinfo("Экспорт завершён", f"Файл сохранён:\n{chosen}", parent=self)
+
+    def _backup_log(self) -> None:
+        default_name = f"warframe-missions-{session_log.datetime.now(session_log.timezone.utc):%Y%m%dT%H%M%SZ}.jsonl"
+        chosen = filedialog.asksaveasfilename(
+            parent=self, title="Резервная копия журнала", defaultextension=".jsonl",
+            filetypes=[("JSONL", "*.jsonl"), ("Все файлы", "*.*")], initialfile=default_name,
+        )
+        if not chosen:
+            return
+        try:
+            backup = session_log.backup_log(session_log.DEFAULT_LOG, chosen)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Не удалось создать копию", str(exc), parent=self)
+            return
+        messagebox.showinfo("Резервная копия готова", f"Файл сохранён:\n{backup}", parent=self)
+
+    def _clear_log(self) -> None:
+        confirmed = messagebox.askyesno(
+            "Очистить историю?",
+            "Сначала будет создана резервная копия. Продолжить очистку журнала?",
+            icon="warning",
+            parent=self,
+        )
+        if not confirmed:
+            return
+        try:
+            backup = session_log.clear_log(session_log.DEFAULT_LOG, confirm=True)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Не удалось очистить журнал", str(exc), parent=self)
+            return
+        messagebox.showinfo("История очищена", f"Резервная копия сохранена:\n{backup}", parent=self)
+        self._show_summary()
 
 
 def main() -> None:
